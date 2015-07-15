@@ -11,7 +11,7 @@
 		B28181981B563F4E00B5EEA7 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = B28181971B563F4E00B5EEA7 /* AppDelegate.m */; };
 		B281819A1B563F4E00B5EEA7 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = B28181991B563F4E00B5EEA7 /* main.m */; };
 		B281819C1B563F4E00B5EEA7 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B281819B1B563F4E00B5EEA7 /* Images.xcassets */; };
-		B281819F1B563F4E00B5EEA7 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = B281819D1B563F4E00B5EEA7 /* MainMenu.xib */; };
+		B281819F1B563F4E00B5EEA7 /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = B281819D1B563F4E00B5EEA7 /* MainWindow.xib */; };
 		B28181C21B564EEF00B5EEA7 /* STMainViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = B28181C01B564EEF00B5EEA7 /* STMainViewController.m */; };
 		B28181C31B564EEF00B5EEA7 /* STMainViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = B28181C11B564EEF00B5EEA7 /* STMainViewController.xib */; };
 /* End PBXBuildFile section */
@@ -26,7 +26,7 @@
 		B28181971B563F4E00B5EEA7 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		B28181991B563F4E00B5EEA7 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		B281819B1B563F4E00B5EEA7 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
-		B281819E1B563F4E00B5EEA7 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		B281819E1B563F4E00B5EEA7 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainWindow.xib; sourceTree = "<group>"; };
 		B28181BF1B564EEF00B5EEA7 /* STMainViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = STMainViewController.h; sourceTree = "<group>"; };
 		B28181C01B564EEF00B5EEA7 /* STMainViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = STMainViewController.m; sourceTree = "<group>"; };
 		B28181C11B564EEF00B5EEA7 /* STMainViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = STMainViewController.xib; sourceTree = "<group>"; };
@@ -80,7 +80,7 @@
 				B28181C01B564EEF00B5EEA7 /* STMainViewController.m */,
 				B28181C11B564EEF00B5EEA7 /* STMainViewController.xib */,
 				B281819B1B563F4E00B5EEA7 /* Images.xcassets */,
-				B281819D1B563F4E00B5EEA7 /* MainMenu.xib */,
+				B281819D1B563F4E00B5EEA7 /* MainWindow.xib */,
 				B28181941B563F4E00B5EEA7 /* Supporting Files */,
 			);
 			path = StockToday;
@@ -164,7 +164,7 @@
 			files = (
 				B281819C1B563F4E00B5EEA7 /* Images.xcassets in Resources */,
 				B28181C31B564EEF00B5EEA7 /* STMainViewController.xib in Resources */,
-				B281819F1B563F4E00B5EEA7 /* MainMenu.xib in Resources */,
+				B281819F1B563F4E00B5EEA7 /* MainWindow.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -217,12 +217,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
-		B281819D1B563F4E00B5EEA7 /* MainMenu.xib */ = {
+		B281819D1B563F4E00B5EEA7 /* MainWindow.xib */ = {
 			isa = PBXVariantGroup;
 			children = (
 				B281819E1B563F4E00B5EEA7 /* Base */,
 			);
-			name = MainMenu.xib;
+			name = MainWindow.xib;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */

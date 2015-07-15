@@ -23,7 +23,7 @@
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="StockToday" systemMenu="apple" id="uQy-DD-JDr">
                         <items>
-                            <menuItem title="Quit StockToday" keyEquivalent="q" id="4sb-4s-VLi">
+                            <menuItem title="Exit" keyEquivalent="q" id="4sb-4s-VLi">
                                 <connections>
                                     <action selector="terminate:" target="-1" id="Te7-pn-YzF"/>
                                 </connections>
@@ -33,7 +33,7 @@
                 </menuItem>
             </items>
         </menu>
-        <window title="StockToday" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" restorable="NO" showsToolbarButton="NO" frameAutosaveName="MainWIndow" animationBehavior="default" id="QvC-M9-y7g">
+        <window title="StockToday" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" showsToolbarButton="NO" frameAutosaveName="MainWIndow" animationBehavior="default" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="335" y="390" width="353" height="321"/>

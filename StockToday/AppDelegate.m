@@ -9,7 +9,7 @@
 #import "AppDelegate.h"
 #import "STMainViewController.h"
 
-@interface AppDelegate ()
+@interface AppDelegate () <NSWindowDelegate>
 
 @property (weak) IBOutlet NSWindow *window;
 @property (strong) IBOutlet STMainViewController *mainViewController;
@@ -20,6 +20,7 @@
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
+    self.window.delegate = self;
     self.mainViewController = [[STMainViewController alloc] initWithNibName:@"STMainViewController" bundle:nil];
     self.window.contentViewController = self.mainViewController;
     
@@ -31,9 +32,15 @@
 
 }
 
-- (BOOL) applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)application
+//- (BOOL) applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)application
+//{
+//    return YES;
+//}
+
+- (void)windowWillClose:(NSNotification *)notification
 {
-    return YES;
+    [NSApp terminate:self];
 }
+
 
 @end

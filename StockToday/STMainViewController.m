@@ -8,7 +8,14 @@
 
 #import "STMainViewController.h"
 
+#import <GCDAsyncSocket.h>
+#import <AFNetworking.h>
+#import <FMDB.h>
+
 @interface STMainViewController ()
+
+@property (weak) IBOutlet NSButton* updateStockList;
+@property (weak) IBOutlet NSButton* updateStockData;
 
 @end
 
@@ -17,8 +24,16 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+}
 
+- (IBAction)updateStockListPressed:(id)sender
+{
+    
+}
 
+- (IBAction)updateStockDataPressed:(id)sender
+{
+    
 }
 
 @end
