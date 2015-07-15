@@ -23,15 +23,18 @@ PODS:
   - FMDB/common (2.5)
   - FMDB/standard (2.5):
     - FMDB/common
+  - JSONKit (1.4)
 
 DEPENDENCIES:
   - AFNetworking
   - CocoaAsyncSocket
   - FMDB
+  - JSONKit
 
 SPEC CHECKSUMS:
   AFNetworking: 05edc0ac4c4c8cf57bcf4b84be5b0744b6d8e71e
   CocoaAsyncSocket: 7cbf214b27f8e7f7574db6a3fd96352ffaed433d
   FMDB: 96e8f1bcc1329e269330f99770ad4285d9003e52
+  JSONKit: 5b69e804ea54d99293eed0fd2ce596c5703fefb0
 
 COCOAPODS: 0.38.0.beta.2
