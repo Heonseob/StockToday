@@ -6,6 +6,7 @@
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="STMainViewController">
             <connections>
+                <outlet property="openDatabase" destination="EyN-qe-IwT" id="52W-Kf-cbe"/>
                 <outlet property="updateStockData" destination="oiM-6N-FxU" id="Qi2-Nj-Ght"/>
                 <outlet property="updateStockList" destination="c06-p5-MUQ" id="U8B-qj-SV9"/>
                 <outlet property="view" destination="Hz6-mo-xeY" id="0bl-1N-x8E"/>
@@ -34,6 +35,16 @@
                     </buttonCell>
                     <connections>
                         <action selector="updateStockDataPressed:" target="-2" id="Iht-7X-TJs"/>
+                    </connections>
+                </button>
+                <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="EyN-qe-IwT">
+                    <rect key="frame" x="20" y="412" width="180" height="39"/>
+                    <buttonCell key="cell" type="smallSquare" title="Open Database" bezelStyle="smallSquare" imagePosition="overlaps" alignment="center" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="p7g-s4-REL">
+                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                        <font key="font" metaFont="system"/>
+                    </buttonCell>
+                    <connections>
+                        <action selector="openDatabase:" target="-2" id="sKw-lb-8c4"/>
                     </connections>
                 </button>
             </subviews>
