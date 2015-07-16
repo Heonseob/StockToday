@@ -13,6 +13,8 @@
 #import <FMDB.h>
 #import <JSONKit.h>
 
+#define SCHEMA_VERSION 1
+
 @interface STMainViewController ()
 
 @property (weak) IBOutlet NSButton* updateStockList;
@@ -89,25 +91,36 @@
     [self.db setCrashOnErrors:YES];
     [self.db setLogsErrors:YES];
 
+    int schemaVersion = 0;
+    FMResultSet *rs = [self.db executeQuery:@"PRAGMA user_version"];
+    if ([rs next])
+        schemaVersion = [rs intForColumnIndex:0];
+    [rs close];
+    
     @try
     {
-//        [self.db executeUpdate:@"PRAGMA secure_delete = 1"];
-//        [self.db executeUpdate:@"PRAGMA journal_mode = wal"];
-//        [self.db executeUpdate:@"PRAGMA synchronous = 1"];
-//        [self.db executeUpdate:@"PRAGMA fullfsync = 1"];
+        [self.db executeUpdate:@"PRAGMA secure_delete = 1"];
+        [self.db executeUpdate:@"PRAGMA journal_mode = wal"];
+        [self.db executeUpdate:@"PRAGMA synchronous = 1"];
+        [self.db executeUpdate:@"PRAGMA fullfsync = 1"];
         
-        [self.db beginTransaction];
-        
-        for (NSString *query in [self queryArrayForCreatingSchema])
+        if (schemaVersion < SCHEMA_VERSION)
         {
-            if ([self.db executeUpdate:query] == NO)
+            [self.db beginTransaction];
+            
+            for (NSString *query in [self queryArrayForCreatingSchema])
             {
-                [[NSException exceptionWithName:@"DB_CREATE"
-                                         reason:self.db.lastError.localizedDescription
-                                       userInfo:@{ @"error": self.db.lastError }] raise];
+                if ([self.db executeUpdate:query] == NO)
+                {
+                    [[NSException exceptionWithName:@"DB_CREATE"
+                                             reason:self.db.lastError.localizedDescription
+                                           userInfo:@{ @"error": self.db.lastError }] raise];
+                }
             }
+            
+            [self.db executeUpdate:[NSString stringWithFormat:@"PRAGMA user_version = %d", SCHEMA_VERSION]];
         }
-        
+
         [self.db commit];
     }
     @catch (NSException *exception)
@@ -190,44 +203,46 @@
 - (NSArray *)queryArrayForCreatingSchema
 {
     return @[
-             (@"CREATE TABLE SHMarket ("
-               "    marketType	INTEGER NOT NULL UNIQUE,"
-               "    name        TEXT NOT NULL UNIQUE,"
-               "    up_max      REAL NOT NULL DEFAULT 0.30,"
-               "    down_max	REAL NOT NULL DEFAULT -0.30,"
-               "    PRIMARY KEY(marketType)"
-               ");"),
+             (@"CREATE TABLE IF NOT EXISTS SHMarket ("
+                "marketType     INTEGER NOT NULL UNIQUE,"
+                "name           TEXT NOT NULL UNIQUE,"
+                "up_max         REAL NOT NULL DEFAULT 0.30,"
+                "down_max       REAL NOT NULL DEFAULT -0.30,"
+                "PRIMARY KEY(marketType)"
+                ");"),
              
-             (@"CREATE TABLE SHItemInfo ("
-               "    code        TEXT NOT NULL UNIQUE,"
-               "    name        TEXT NOT NULL UNIQUE,"
-               "    marketType	INTEGER NOT NULL,"
-               "    branchType	INTEGER DEFAULT 0,"
-               "    tax_buy     REAL NOT NULL DEFAULT 0.0,"
-               "    tax_sell	REAL NOT NULL DEFAULT 0.0030,"
-               "    fee_buy     REAL NOT NULL DEFAULT 0.000150,"
-               "    fee_sell	REAL NOT NULL DEFAULT 0.000150,"
-               "    PRIMARY KEY(code,name)"
-               ");"),
+             (@"CREATE TABLE IF NOT EXISTS SHItemInfo ("
+                "code           TEXT NOT NULL UNIQUE,"
+                "name           TEXT NOT NULL UNIQUE,"
+                "marketType     INTEGER NOT NULL,"
+                "branchType     INTEGER DEFAULT 0,"
+                "tax_buy        REAL NOT NULL DEFAULT 0.0,"
+                "tax_sell       REAL NOT NULL DEFAULT 0.0030,"
+                "fee_buy        REAL NOT NULL DEFAULT 0.000150,"
+                "fee_sell       REAL NOT NULL DEFAULT 0.000150,"
+                "PRIMARY KEY(code,name)"
+                ");"),
              
-             (@"CREATE INDEX idx_itemInfo_code ON SHItemInfo (code);"),
-             (@"CREATE INDEX idx_itemInfo_name ON SHItemInfo (name);"),
+             (@"CREATE INDEX IF NOT EXISTS idx_itemInfo_code ON SHItemInfo (code);"),
+             (@"CREATE INDEX IF NOT EXISTS idx_itemInfo_name ON SHItemInfo (name);"),
              
-             (@"CREATE TABLE SHItem ("
-               "    code        TEXT NOT NULL,"
-               "    date        INTEGER NOT NULL,"
-               "    start       INTEGER NOT NULL,"
-               "    high        INTEGER NOT NULL,"
-               "    low         INTEGER NOT NULL,"
-               "    end         INTEGER NOT NULL,"
-               "    updown      INTEGER NOT NULL,"
-               "    rate        REAL NOT NULL,"
-               "    memo        TEXT,"
-               "    PRIMARY KEY(code,date)"
-               ");"),
+             (@"CREATE TABLE IF NOT EXISTS SHItem ("
+                "code           TEXT NOT NULL,"
+                "date           INTEGER NOT NULL,"
+                "start          INTEGER NOT NULL,"
+                "high           INTEGER NOT NULL,"
+                "low            INTEGER NOT NULL,"
+                "end            INTEGER NOT NULL,"
+                "updown         INTEGER NOT NULL,"
+                "rate           REAL NOT NULL,"
+                "PRIMARY KEY(code,date)"
+                ");"),
              
-             (@"CREATE INDEX idx_item_code ON SHItem (code);"),
-             (@"CREATE INDEX idx_item_date ON SHItem (date);")
+             (@"CREATE INDEX IF NOT EXISTS idx_item_code ON SHItem (code);"),
+             (@"CREATE INDEX IF NOT EXISTS idx_item_date ON SHItem (date);"),
+             
+             (@"INSERT INTO SHMarket (marketType, name) VALUES (0, 'KOSPI');"),
+             (@"INSERT INTO SHMarket (marketType, name) VALUES (1, 'KOSDAQ');")
      ];
 }
 
