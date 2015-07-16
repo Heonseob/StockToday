@@ -29,7 +29,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2015 DaumKakao Chase All rights reserved.</string>
 	<key>NSMainNibFile</key>
-	<string>MainWindow</string>
+	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>
