@@ -21,7 +21,8 @@
 {
     self.mainWindowController = [[STMainWindowController alloc] initWithWindowNibName:@"STMainWindowController"];
     [self.mainWindowController showWindow:self];
-    [self.mainWindowController.window makeKeyAndOrderFront:nil];
+    //[self.mainWindowController window];
+//    [self.mainWindowController.window makeKeyAndOrderFront:nil];
 }
 
 - (void)applicationWillTerminate:(NSNotification *)aNotification
