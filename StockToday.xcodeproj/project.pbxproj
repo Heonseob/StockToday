@@ -314,6 +314,23 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = StockToday/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-isystem",
+					"\"${PODS_ROOT}/Headers/Public\"",
+					"-isystem",
+					"\"${PODS_ROOT}/Headers/Public/AFNetworking\"",
+					"-isystem",
+					"\"${PODS_ROOT}/Headers/Public/CocoaAsyncSocket\"",
+					"-isystem",
+					"\"${PODS_ROOT}/Headers/Public/FMDB\"",
+					"-isystem",
+					"\"${PODS_ROOT}/Headers/Public/JSONKit\"",
+					"-DSQLITE_HAS_CODEC",
+					"-DSQLCIPHER_CRYPTO_CC",
+					"-DSQLITE_THREADSAFE",
+					"-DSQLITE_TEMP_STORE=2",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -326,6 +343,23 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = StockToday/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-isystem",
+					"\"${PODS_ROOT}/Headers/Public\"",
+					"-isystem",
+					"\"${PODS_ROOT}/Headers/Public/AFNetworking\"",
+					"-isystem",
+					"\"${PODS_ROOT}/Headers/Public/CocoaAsyncSocket\"",
+					"-isystem",
+					"\"${PODS_ROOT}/Headers/Public/FMDB\"",
+					"-isystem",
+					"\"${PODS_ROOT}/Headers/Public/JSONKit\"",
+					"-DSQLITE_HAS_CODEC",
+					"-DSQLCIPHER_CRYPTO_CC",
+					"-DSQLITE_THREADSAFE",
+					"-DSQLITE_TEMP_STORE=2",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

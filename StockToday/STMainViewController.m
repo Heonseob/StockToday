@@ -17,9 +17,9 @@
 
 @interface STMainViewController ()
 
-@property (weak) IBOutlet NSButton* updateStockList;
-@property (weak) IBOutlet NSButton* updateStockData;
 @property (weak) IBOutlet NSButton* openDatabase;
+@property (weak) IBOutlet NSButton* updateKOSPIList;
+@property (weak) IBOutlet NSButton* updateKOSDAQList;
 
 @property (strong) FMDatabase *db;
 @property (strong) NSOperationQueue *queue;
@@ -46,95 +46,24 @@
     self.queue.name = @"StockToday";
 }
 
-- (IBAction)updateStockListPressed:(id)sender
+- (IBAction)openDatabase:(id)sender
+{
+    BOOL open = [self openDatabaseFile];
+    if (open == NO)
+        return;
+    
+    NSLog(@"OpenDatabase Success");
+}
+
+- (IBAction)updateKOSPIListPressed:(id)sender
 {
     [self updateStockItemList:YES];
 }
 
-- (IBAction)updateStockDataPressed:(id)sender
+- (IBAction)updateKOSDAQListPressed:(id)sender
 {
     [self updateStockItemList:NO];
 }
-
-- (IBAction)openDatabase:(id)sender
-{
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *dir = [paths objectAtIndex:0];
-    dir = [dir stringByAppendingPathComponent:@"StockToday.db"];
-    
-    BOOL openSuccess = NO;
-    
-    do {
-        self.db = [FMDatabase databaseWithPath:dir];
-        if (self.db == nil || ![self.db open])
-        {
-            NSLog(@"Couldn't open database at path: %@", dir);
-            break;
-        }
-        
-        if ([self.db getSchema] == nil)
-        {
-            NSLog(@"database is invalid: %@", self.db.lastError);
-            NSError *error;
-            if ([[NSFileManager defaultManager] removeItemAtPath:dir error:&error])
-                continue;
-
-            NSLog(@"Couldn't delete database file: %@", error);
-            break;
-        }
-        
-        openSuccess = YES;
-        
-    } while (NO);
-    
-    [self.db setShouldCacheStatements:YES];
-    [self.db setCrashOnErrors:YES];
-    [self.db setLogsErrors:YES];
-
-    int schemaVersion = 0;
-    FMResultSet *rs = [self.db executeQuery:@"PRAGMA user_version"];
-    if ([rs next])
-        schemaVersion = [rs intForColumnIndex:0];
-    [rs close];
-    
-    @try
-    {
-        [self.db executeUpdate:@"PRAGMA secure_delete = 1"];
-        [self.db executeUpdate:@"PRAGMA journal_mode = wal"];
-        [self.db executeUpdate:@"PRAGMA synchronous = 1"];
-        [self.db executeUpdate:@"PRAGMA fullfsync = 1"];
-        
-        if (schemaVersion < SCHEMA_VERSION)
-        {
-            [self.db beginTransaction];
-            
-            for (NSString *query in [self queryArrayForCreatingSchema])
-            {
-                if ([self.db executeUpdate:query] == NO)
-                {
-                    [[NSException exceptionWithName:@"DB_CREATE"
-                                             reason:self.db.lastError.localizedDescription
-                                           userInfo:@{ @"error": self.db.lastError }] raise];
-                }
-            }
-            
-            [self.db executeUpdate:[NSString stringWithFormat:@"PRAGMA user_version = %d", SCHEMA_VERSION]];
-        }
-
-        [self.db commit];
-    }
-    @catch (NSException *exception)
-    {
-        NSError *error;
-        if (![[NSFileManager defaultManager] removeItemAtPath:self.db.databasePath error:&error])
-            NSLog(@"Couldn't delete database file: %@", error);
-        @throw;
-    }
-
-    [self.db close];
-    
-}
-
 
 - (void) updateStockItemList:(BOOL)kospi
 {
@@ -179,8 +108,12 @@
                                return;
                            }
                            
-                           NSString *itemCode = nil, *itemName = nil;
+                           //NSMutableDictionary *itemList = [NSMutableDictionary new];
+
+                           [self.db beginTransaction];
+
                            int index = 0;
+                           NSString *itemCode = nil, *itemName = nil, *queryItemInsert = nil;
                            for (NSDictionary* item in itemArray)
                            {
                                itemCode = [item objectForKey:@"code"];
@@ -192,12 +125,101 @@
                                if (itemCode.length > 6)
                                    continue;
                                
+                               queryItemInsert = [NSString stringWithFormat:@"INSERT OR IGNORE INTO SHItemInfo (code,name,marketType) VALUES ('%@', '%@', %d);", itemCode, itemName, kospi?0:1];
+                               if ([self.db executeUpdate:queryItemInsert] == NO)
+                               {
+                                   
+                               }
+                               
+                               //itemList[itemCode] = itemName;
                                NSLog(@"%4d : [%@] %@", index++, itemCode, itemName);
                            }
+                           
+                           [self.db commit];
                            
                        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
                            NSLog(@"StockItemList FAIL - %@", error);
                        }];
+}
+
+- (BOOL)openDatabaseFile
+{
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *dir = [paths objectAtIndex:0];
+    dir = [dir stringByAppendingPathComponent:@"StockToday.db"];
+    
+    do {
+        self.db = [FMDatabase databaseWithPath:dir];
+        if (self.db == nil || ![self.db open])
+        {
+            NSLog(@"Couldn't open database at path: %@", dir);
+            return NO;
+        }
+        
+        if ([self.db getSchema] == nil)
+        {
+            NSLog(@"database is invalid: %@", self.db.lastError);
+            NSError *error;
+            if ([[NSFileManager defaultManager] removeItemAtPath:dir error:&error])
+                continue;
+            
+            NSLog(@"Couldn't delete database file: %@", error);
+            return NO;
+        }
+        
+    } while (NO);
+    
+    [self.db setShouldCacheStatements:YES];
+    [self.db setCrashOnErrors:YES];
+    [self.db setLogsErrors:YES];
+    
+    int schemaVersion = 0;
+    FMResultSet *rs = [self.db executeQuery:@"PRAGMA user_version"];
+    if ([rs next])
+        schemaVersion = [rs intForColumnIndex:0];
+    [rs close];
+
+    BOOL openSuccess = NO;
+    
+    @try
+    {
+        [self.db executeQuery:@"PRAGMA secure_delete = 1"];
+        [self.db executeQuery:@"PRAGMA journal_mode = wal"];
+        [self.db executeQuery:@"PRAGMA synchronous = 1"];
+        [self.db executeQuery:@"PRAGMA fullfsync = 1"];
+        
+        if (schemaVersion < SCHEMA_VERSION)
+        {
+            [self.db beginTransaction];
+            
+            for (NSString *query in [self queryArrayForCreatingSchema])
+            {
+                if ([self.db executeUpdate:query] == NO)
+                {
+                    [[NSException exceptionWithName:@"DB_CREATE"
+                                             reason:self.db.lastError.localizedDescription
+                                           userInfo:@{ @"error": self.db.lastError }] raise];
+                }
+            }
+            
+            [self.db commit];
+            
+            [self.db executeUpdate:[NSString stringWithFormat:@"PRAGMA user_version = %d", SCHEMA_VERSION]];
+        }
+        
+        openSuccess = YES;
+    }
+    @catch (NSException *exception)
+    {
+        openSuccess = NO;
+
+        NSError *error;
+        if (![[NSFileManager defaultManager] removeItemAtPath:self.db.databasePath error:&error])
+            NSLog(@"Couldn't delete database file: %@", error);
+        @throw;
+    }
+    
+    return openSuccess;
 }
 
 - (NSArray *)queryArrayForCreatingSchema
