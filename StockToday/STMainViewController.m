@@ -15,11 +15,14 @@
 
 #define SCHEMA_VERSION 1
 
-@interface STMainViewController ()
+@interface STMainViewController () <NSTableViewDataSource>
 
 @property (weak) IBOutlet NSButton* openDatabase;
 @property (weak) IBOutlet NSButton* updateKOSPIList;
 @property (weak) IBOutlet NSButton* updateKOSDAQList;
+@property (weak) IBOutlet NSButton* updateItemPrice;
+@property (weak) IBOutlet NSPopUpButton* popupStockList;
+@property (weak) IBOutlet NSTableView* tableStockPrice;
 
 @property (strong) FMDatabase *db;
 @property (strong) NSOperationQueue *queue;
@@ -44,6 +47,9 @@
     self.queue = [NSOperationQueue new];
     self.queue.maxConcurrentOperationCount = 1;
     self.queue.name = @"StockToday";
+    
+    [self.popupStockList addItemWithTitle:@"035420:::네이버"];     //default
+    [self.popupStockList selectItemAtIndex:0];
 }
 
 - (IBAction)openDatabase:(id)sender
@@ -64,6 +70,24 @@
 {
     [self updateStockItemList:NO];
 }
+
+- (IBAction)updateItemPricePressed:(id)sender
+{
+    NSString* selectItem = [self.popupStockList titleOfSelectedItem];
+    if (selectItem == nil || [selectItem length] == 0)
+        return;
+    
+    NSArray* itemComponent = [selectItem componentsSeparatedByString:@":::"];
+    if (itemComponent == nil || itemComponent.count != 2)
+        return;
+
+    NSString* itemCode = [itemComponent objectAtIndex:0];
+    
+    [self updateStockItemPrice:itemCode];
+    
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 - (void) updateStockItemList:(BOOL)kospi
 {
@@ -108,12 +132,11 @@
                                return;
                            }
                            
-                           //NSMutableDictionary *itemList = [NSMutableDictionary new];
-
+                           [self.popupStockList removeAllItems];
                            [self.db beginTransaction];
 
-                           int index = 0;
-                           NSString *itemCode = nil, *itemName = nil, *queryItemInsert = nil;
+                           int index = 0, popupSelectIndex = 0;
+                           NSString *itemCode = nil, *itemName = nil, *queryItemInsert = nil, *popupName;
                            for (NSDictionary* item in itemArray)
                            {
                                itemCode = [item objectForKey:@"code"];
@@ -130,16 +153,83 @@
                                {
                                    
                                }
+
+                               if (kospi)
+                               {
+                                   if ([itemName isEqualToString:@"NAVER"])
+                                       popupSelectIndex = index;
+                               }
+                               else
+                               {
+                                   if ([itemName isEqualToString:@"다음카카오"])
+                                       popupSelectIndex = index;
+                               }
                                
-                               //itemList[itemCode] = itemName;
+                               popupName = [NSString stringWithFormat:@"%@:::%@", itemCode, itemName];
+                               [self.popupStockList addItemWithTitle:popupName];
+
                                NSLog(@"%4d : [%@] %@", index++, itemCode, itemName);
                            }
                            
                            [self.db commit];
+                           [self.popupStockList selectItemAtIndex:popupSelectIndex];
+                           
                            
                        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
                            NSLog(@"StockItemList FAIL - %@", error);
                        }];
+}
+
+- (void)updateStockItemPrice:(NSString *)itemCode
+{
+    //035420
+    //http://finance.naver.com/item/sise_day.nhn?code=%s&page=%d
+    //http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%s&modify=0   //수정주가 적용안함
+    //http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=1&code=035420&modify=1
+
+//    // 기존에 있는 테이블인가? 없으면 새로 만들기
+//    
+//    NSString* queryTable = [NSString stringWithFormat:@"SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'SHItem_%@';", itemCode];
+//    
+//    int countTable = 0;
+//    FMResultSet *rs = [self.db executeQuery:queryTable];
+//    if ([rs next])
+//        countTable = [rs intForColumnIndex:0];
+//    [rs close];
+//
+//    if (countTable == 0)
+//    {
+//        for (NSString *query in [self queryArrayForCreatingItemSchema:itemCode])
+//        {
+//            if ([self.db executeUpdate:query] == NO)
+//                return;
+//        }
+//    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    
+//    [self.operationManager.operationQueue setMaxConcurrentOperationCount:3];
+//
+//    for (int i = 1 ; i < 100 ; i++)
+//    {
+//        NSString* url = [NSString stringWithFormat:@"http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%@&modify=0", i, itemCode];
+//        NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url] cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:5.0];
+//        
+//        AFHTTPRequestOperation *op = [self.operationManager HTTPRequestOperationWithRequest:request
+//                                                                                    success:^(AFHTTPRequestOperation *operation, id responseObject) {
+//                                                                                        //NSLog(@"SUCCESS : %@", [operation.request.URL absoluteString]);
+//                                                                                    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+//                                                                                        //NSLog(@"FAILED  : %@", [operation.request.URL absoluteString]);
+//                                                                                        NSLog(@"FAILED  : %@", error);
+//                                                                                    }];
+//
+//        NSLog(@"AddQueue");
+//        [self.operationManager.operationQueue addOperation:op];
+//    }
+
+    
+ 
+    [self.tableStockPrice reloadData];
 }
 
 - (BOOL)openDatabaseFile
@@ -248,24 +338,68 @@
              (@"CREATE INDEX IF NOT EXISTS idx_itemInfo_code ON SHItemInfo (code);"),
              (@"CREATE INDEX IF NOT EXISTS idx_itemInfo_name ON SHItemInfo (name);"),
              
-             (@"CREATE TABLE IF NOT EXISTS SHItem ("
-                "code           TEXT NOT NULL,"
-                "date           INTEGER NOT NULL,"
-                "start          INTEGER NOT NULL,"
-                "high           INTEGER NOT NULL,"
-                "low            INTEGER NOT NULL,"
-                "end            INTEGER NOT NULL,"
-                "updown         INTEGER NOT NULL,"
-                "rate           REAL NOT NULL,"
-                "PRIMARY KEY(code,date)"
-                ");"),
-             
-             (@"CREATE INDEX IF NOT EXISTS idx_item_code ON SHItem (code);"),
-             (@"CREATE INDEX IF NOT EXISTS idx_item_date ON SHItem (date);"),
+//             (@"CREATE TABLE IF NOT EXISTS SHItem ("
+//                "code           TEXT NOT NULL,"
+//                "date           INTEGER NOT NULL, /* YYYY-MM-DD */"
+//                "start          INTEGER NOT NULL,"
+//                "high           INTEGER NOT NULL,"
+//                "low            INTEGER NOT NULL,"
+//                "end            INTEGER NOT NULL,"
+//                "updown         INTEGER NOT NULL,"
+//                "amount         INTEGER NOT NULL,"
+//                "PRIMARY KEY(code,date)"
+//                ");"),
+//             
+//             (@"CREATE INDEX IF NOT EXISTS idx_item_code ON SHItem (code);"),
+//             (@"CREATE INDEX IF NOT EXISTS idx_item_date ON SHItem (date);"),
              
              (@"INSERT INTO SHMarket (marketType, name) VALUES (0, 'KOSPI');"),
              (@"INSERT INTO SHMarket (marketType, name) VALUES (1, 'KOSDAQ');")
      ];
 }
+
+- (NSArray *)queryArrayForCreatingItemSchema:(NSString*)itemCode
+{
+    NSString* queryTableName = (@"CREATE TABLE IF NOT EXISTS SHItem_{ITEM_CODE} ("
+                                "date   INTEGER NOT NULL UNIQUE, /* YYYY-MM-DD */"
+                                "start  INTEGER NOT NULL,"
+                                "high   INTEGER NOT NULL,"
+                                "low    INTEGER NOT NULL,"
+                                "end    INTEGER NOT NULL,"
+                                "updown INTEGER NOT NULL,"
+                                "amount INTEGER NOT NULL,"
+                                "PRIMARY KEY(index,date)"
+                                ");");
+
+    NSString* queryIndex = (@"CREATE INDEX IF NOT EXISTS idx_item_{ITEM_CODE}_date ON SHItem_{ITEM_CODE} (date);");
+
+    queryTableName = [queryTableName stringByReplacingOccurrencesOfString:@"{ITEM_CODE}" withString:itemCode];
+    queryIndex = [queryIndex stringByReplacingOccurrencesOfString:@"{ITEM_CODE}" withString:itemCode];
+
+    return @[queryTableName, queryIndex];
+}
+
+#pragma mark - NSTableViewDataSource
+
+//- (void)tableView:(NSTableView *)tableView willDisplayCell:(id)cell forTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row;
+//{
+//    NSString* date = [NSString stringWithFormat:@"ROW_%ld", row];
+//
+//    [cell setTitle:date];
+//}
+//
+
+- (id)tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row
+{
+    NSString* date = [NSString stringWithFormat:@"ROW_%ld", row];
+    
+    return date;
+}
+
+- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
+{
+    return 3;   //[self dataForTableView].count;
+}
+
 
 @end
