@@ -214,7 +214,7 @@
 
 //    for (int i = 1 ; i < 100 ; i++)
 //    {
-        NSString* url = [NSString stringWithFormat:@"http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%@&modify=0", 1, itemCode];
+        NSString* url = [NSString stringWithFormat:@"http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%@&modify=0", 2, itemCode];
         NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url] cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:5.0];
         
         AFHTTPRequestOperation *op = [self.operationManager HTTPRequestOperationWithRequest:request
@@ -314,11 +314,95 @@
 
 - (BOOL)parseStockPriceList:(NSString*)html
 {
+    NSRange rangeStarter = {0, html.length};
+    NSRange rangeCloser = {0, 1000};
+    NSRange rangeValue  = {0, 1000};
     
-//    self.stockPrices = [NSMutableArray new];
-//    [self.stockPrices addObject:@"TEST1"];
-//    [self.tableStockPrice reloadData];
+    while ((rangeStarter = [html rangeOfString:@"<td class=\"datetime2\">" options:NSLiteralSearch range:rangeStarter]).location != NSNotFound)
+    {
+        rangeCloser.location = rangeStarter.location + rangeStarter.length;
+        rangeCloser.length = 20;
+        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
+        
+        rangeValue.location = rangeStarter.location + rangeStarter.length;
+        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
+        NSLog(@"DATE %@ /", [html substringWithRange:rangeValue]);
 
+        
+        rangeStarter.location = rangeCloser.location + rangeCloser.length;
+        rangeStarter.length = 100;
+        rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter];
+
+        rangeCloser.location = rangeStarter.location + rangeStarter.length;
+        rangeCloser.length = 20;
+        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
+
+        rangeValue.location = rangeStarter.location + rangeStarter.length;
+        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
+        NSLog(@"START %@ /", [html substringWithRange:rangeValue]);
+        
+
+        rangeStarter.location = rangeCloser.location + rangeCloser.length;
+        rangeStarter.length = 100;
+        rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter];
+        
+        rangeCloser.location = rangeStarter.location + rangeStarter.length;
+        rangeCloser.length = 20;
+        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
+        
+        rangeValue.location = rangeStarter.location + rangeStarter.length;
+        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
+        NSLog(@"HIGH %@ /", [html substringWithRange:rangeValue]);
+
+        
+        rangeStarter.location = rangeCloser.location + rangeCloser.length;
+        rangeStarter.length = 100;
+        rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter];
+        
+        rangeCloser.location = rangeStarter.location + rangeStarter.length;
+        rangeCloser.length = 20;
+        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
+        
+        rangeValue.location = rangeStarter.location + rangeStarter.length;
+        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
+        NSLog(@"LOW %@ /", [html substringWithRange:rangeValue]);
+
+        
+        rangeStarter.location = rangeCloser.location + rangeCloser.length;
+        rangeStarter.length = 100;
+        rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter];
+        
+        rangeCloser.location = rangeStarter.location + rangeStarter.length;
+        rangeCloser.length = 20;
+        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
+        
+        rangeValue.location = rangeStarter.location + rangeStarter.length;
+        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
+        NSLog(@"END %@ /", [html substringWithRange:rangeValue]);
+
+
+        rangeStarter.location = rangeCloser.location + rangeCloser.length;
+        rangeStarter.length = 100;
+        rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter];
+        
+        rangeCloser.location = rangeStarter.location + rangeStarter.length;
+        rangeCloser.length = 20;
+        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
+        
+        rangeValue.location = rangeStarter.location + rangeStarter.length;
+        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
+        NSLog(@"AMOUNT %@ /", [html substringWithRange:rangeValue]);
+
+        
+        rangeStarter.location = rangeCloser.location + rangeCloser.length;
+        rangeStarter.length = html.length - rangeStarter.location;
+    }
+
+    
+    
+    self.stockPrices = [NSMutableArray new];
+    [self.stockPrices addObject:@"TEST1"];
+    [self.tableStockPrice reloadData];
     
     return YES;
 }
