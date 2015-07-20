@@ -29,6 +29,8 @@
 
 @property (strong) AFHTTPRequestOperationManager *operationManager;
 
+@property (strong) NSMutableArray *stockPrices;
+
 @end
 
 @implementation STMainViewController
@@ -208,28 +210,26 @@
 
     //////////////////////////////////////////////////////////////////////////////////////////
     
-//    [self.operationManager.operationQueue setMaxConcurrentOperationCount:3];
-//
+    [self.operationManager.operationQueue setMaxConcurrentOperationCount:3];
+
 //    for (int i = 1 ; i < 100 ; i++)
 //    {
-//        NSString* url = [NSString stringWithFormat:@"http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%@&modify=0", i, itemCode];
-//        NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url] cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:5.0];
-//        
-//        AFHTTPRequestOperation *op = [self.operationManager HTTPRequestOperationWithRequest:request
-//                                                                                    success:^(AFHTTPRequestOperation *operation, id responseObject) {
-//                                                                                        //NSLog(@"SUCCESS : %@", [operation.request.URL absoluteString]);
-//                                                                                    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-//                                                                                        //NSLog(@"FAILED  : %@", [operation.request.URL absoluteString]);
-//                                                                                        NSLog(@"FAILED  : %@", error);
-//                                                                                    }];
-//
-//        NSLog(@"AddQueue");
-//        [self.operationManager.operationQueue addOperation:op];
-//    }
+        NSString* url = [NSString stringWithFormat:@"http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%@&modify=0", 1, itemCode];
+        NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url] cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:5.0];
+        
+        AFHTTPRequestOperation *op = [self.operationManager HTTPRequestOperationWithRequest:request
+                                                                                    success:^(AFHTTPRequestOperation *operation, id responseObject) {
+                                                                                        //NSLog(@"SUCCESS : %@", [operation.request.URL absoluteString]);
+                                                                                        NSString *stockHtml = [[NSString alloc] initWithUTF8String:[(NSData *)responseObject bytes]];
+                                                                                        [self parseStockPriceList:stockHtml];
 
-    
- 
-    [self.tableStockPrice reloadData];
+                                                                                    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+                                                                                        //NSLog(@"FAILED  : %@", [operation.request.URL absoluteString]);
+                                                                                        //NSLog(@"FAILED  : %@", error);
+                                                                                    }];
+
+        [self.operationManager.operationQueue addOperation:op];
+//    }
 }
 
 - (BOOL)openDatabaseFile
@@ -312,6 +312,17 @@
     return openSuccess;
 }
 
+- (BOOL)parseStockPriceList:(NSString*)html
+{
+    
+//    self.stockPrices = [NSMutableArray new];
+//    [self.stockPrices addObject:@"TEST1"];
+//    [self.tableStockPrice reloadData];
+
+    
+    return YES;
+}
+
 - (NSArray *)queryArrayForCreatingSchema
 {
     return @[
@@ -381,24 +392,16 @@
 
 #pragma mark - NSTableViewDataSource
 
-//- (void)tableView:(NSTableView *)tableView willDisplayCell:(id)cell forTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row;
-//{
-//    NSString* date = [NSString stringWithFormat:@"ROW_%ld", row];
-//
-//    [cell setTitle:date];
-//}
-//
-
-- (id)tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row
+- (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row
 {
-    NSString* date = [NSString stringWithFormat:@"ROW_%ld", row];
-    
-    return date;
+    NSTableCellView *result = [tableView makeViewWithIdentifier:@"COLUMN_DATA" owner:self];
+    result.textField.stringValue = self.stockPrices[row];
+    return result;
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
 {
-    return 3;   //[self dataForTableView].count;
+    return self.stockPrices.count;
 }
 
 
