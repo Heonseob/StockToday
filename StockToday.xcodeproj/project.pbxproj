@@ -16,6 +16,7 @@
 		B28181CF1B57835D00B5EEA7 /* STMainWindowController.m in Sources */ = {isa = PBXBuildFile; fileRef = B28181CD1B57835D00B5EEA7 /* STMainWindowController.m */; };
 		B28181D01B57835D00B5EEA7 /* STMainWindowController.xib in Resources */ = {isa = PBXBuildFile; fileRef = B28181CE1B57835D00B5EEA7 /* STMainWindowController.xib */; };
 		B28181D21B57979100B5EEA7 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = B28181D11B57979100B5EEA7 /* MainMenu.xib */; };
+		B28181D51B5DE0C600B5EEA7 /* STDatabaseManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B28181D41B5DE0C600B5EEA7 /* STDatabaseManager.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +36,8 @@
 		B28181CD1B57835D00B5EEA7 /* STMainWindowController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = STMainWindowController.m; sourceTree = "<group>"; };
 		B28181CE1B57835D00B5EEA7 /* STMainWindowController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = STMainWindowController.xib; sourceTree = "<group>"; };
 		B28181D11B57979100B5EEA7 /* MainMenu.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MainMenu.xib; sourceTree = "<group>"; };
+		B28181D31B5DE0C600B5EEA7 /* STDatabaseManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = STDatabaseManager.h; sourceTree = "<group>"; };
+		B28181D41B5DE0C600B5EEA7 /* STDatabaseManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = STDatabaseManager.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -87,6 +90,8 @@
 				B28181CE1B57835D00B5EEA7 /* STMainWindowController.xib */,
 				B28181BF1B564EEF00B5EEA7 /* STMainViewController.h */,
 				B28181C01B564EEF00B5EEA7 /* STMainViewController.m */,
+				B28181D31B5DE0C600B5EEA7 /* STDatabaseManager.h */,
+				B28181D41B5DE0C600B5EEA7 /* STDatabaseManager.m */,
 				B28181C11B564EEF00B5EEA7 /* STMainViewController.xib */,
 				B281819B1B563F4E00B5EEA7 /* Images.xcassets */,
 				B28181941B563F4E00B5EEA7 /* Supporting Files */,
@@ -218,6 +223,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B281819A1B563F4E00B5EEA7 /* main.m in Sources */,
+				B28181D51B5DE0C600B5EEA7 /* STDatabaseManager.m in Sources */,
 				B28181C21B564EEF00B5EEA7 /* STMainViewController.m in Sources */,
 				B28181981B563F4E00B5EEA7 /* AppDelegate.m in Sources */,
 				B28181CF1B57835D00B5EEA7 /* STMainWindowController.m in Sources */,

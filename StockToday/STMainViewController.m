@@ -7,13 +7,11 @@
 //
 
 #import "STMainViewController.h"
+#import "STDatabaseManager.h"
 
 #import <GCDAsyncSocket.h>
 #import <AFNetworking.h>
-#import <FMDB.h>
 #import <JSONKit.h>
-
-#define SCHEMA_VERSION 1
 
 @interface STMainViewController () <NSTableViewDataSource>
 
@@ -23,9 +21,6 @@
 @property (weak) IBOutlet NSButton* updateItemPrice;
 @property (weak) IBOutlet NSPopUpButton* popupStockList;
 @property (weak) IBOutlet NSTableView* tableStockPrice;
-
-@property (strong) FMDatabase *db;
-@property (strong) NSOperationQueue *queue;
 
 @property (strong) AFHTTPRequestOperationManager *operationManager;
 
@@ -46,17 +41,13 @@
 //    [requestSerializer setValue:@"application/json" forHTTPHeaderField:@"Accept"];
 //    self.operationManager.responseSerializer = [AFJSONResponseSerializer serializer];
 
-    self.queue = [NSOperationQueue new];
-    self.queue.maxConcurrentOperationCount = 1;
-    self.queue.name = @"StockToday";
-    
     [self.popupStockList addItemWithTitle:@"035420:::네이버"];     //default
     [self.popupStockList selectItemAtIndex:0];
 }
 
 - (IBAction)openDatabase:(id)sender
 {
-    BOOL open = [self openDatabaseFile];
+    BOOL open = [DATABASE openDatabase];
     if (open == NO)
         return;
     
@@ -134,11 +125,12 @@
                                return;
                            }
                            
+                           [DATABASE insertItemInfo:itemArray market:kospi];
+                           
                            [self.popupStockList removeAllItems];
-                           [self.db beginTransaction];
 
                            int index = 0, popupSelectIndex = 0;
-                           NSString *itemCode = nil, *itemName = nil, *queryItemInsert = nil, *popupName;
+                           NSString *itemCode = nil, *itemName = nil, *popupName;
                            for (NSDictionary* item in itemArray)
                            {
                                itemCode = [item objectForKey:@"code"];
@@ -150,12 +142,6 @@
                                if (itemCode.length > 6)
                                    continue;
                                
-                               queryItemInsert = [NSString stringWithFormat:@"INSERT OR IGNORE INTO SHItemInfo (code,name,marketType) VALUES ('%@', '%@', %d);", itemCode, itemName, kospi?0:1];
-                               if ([self.db executeUpdate:queryItemInsert] == NO)
-                               {
-                                   
-                               }
-
                                if (kospi)
                                {
                                    if ([itemName isEqualToString:@"NAVER"])
@@ -173,7 +159,6 @@
                                NSLog(@"%4d : [%@] %@", index++, itemCode, itemName);
                            }
                            
-                           [self.db commit];
                            [self.popupStockList selectItemAtIndex:popupSelectIndex];
                            
                            
@@ -189,32 +174,13 @@
     //http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%s&modify=0   //수정주가 적용안함
     //http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=1&code=035420&modify=1
 
-//    // 기존에 있는 테이블인가? 없으면 새로 만들기
-//    
-//    NSString* queryTable = [NSString stringWithFormat:@"SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'SHItem_%@';", itemCode];
-//    
-//    int countTable = 0;
-//    FMResultSet *rs = [self.db executeQuery:queryTable];
-//    if ([rs next])
-//        countTable = [rs intForColumnIndex:0];
-//    [rs close];
-//
-//    if (countTable == 0)
-//    {
-//        for (NSString *query in [self queryArrayForCreatingItemSchema:itemCode])
-//        {
-//            if ([self.db executeUpdate:query] == NO)
-//                return;
-//        }
-//    }
-
     //////////////////////////////////////////////////////////////////////////////////////////
     
-    [self.operationManager.operationQueue setMaxConcurrentOperationCount:3];
+    //[self.operationManager.operationQueue setMaxConcurrentOperationCount:3];
 
-//    for (int i = 1 ; i < 100 ; i++)
-//    {
-        NSString* url = [NSString stringWithFormat:@"http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%@&modify=0", 2, itemCode];
+    for (int i = 1 ; i < 200 ; i++)
+    {
+        NSString* url = [NSString stringWithFormat:@"http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%@&modify=0", i, itemCode];
         NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url] cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:5.0];
         
         AFHTTPRequestOperation *op = [self.operationManager HTTPRequestOperationWithRequest:request
@@ -229,250 +195,130 @@
                                                                                     }];
 
         [self.operationManager.operationQueue addOperation:op];
-//    }
+    }
 }
 
-- (BOOL)openDatabaseFile
+
+- (NSMutableArray *)parseStockPriceList:(NSString*)html
 {
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *dir = [paths objectAtIndex:0];
-    dir = [dir stringByAppendingPathComponent:@"StockToday.db"];
-    
-    do {
-        self.db = [FMDatabase databaseWithPath:dir];
-        if (self.db == nil || ![self.db open])
-        {
-            NSLog(@"Couldn't open database at path: %@", dir);
-            return NO;
-        }
-        
-        if ([self.db getSchema] == nil)
-        {
-            NSLog(@"database is invalid: %@", self.db.lastError);
-            NSError *error;
-            if ([[NSFileManager defaultManager] removeItemAtPath:dir error:&error])
-                continue;
-            
-            NSLog(@"Couldn't delete database file: %@", error);
-            return NO;
-        }
-        
-    } while (NO);
-    
-    [self.db setShouldCacheStatements:YES];
-    [self.db setCrashOnErrors:YES];
-    [self.db setLogsErrors:YES];
-    
-    int schemaVersion = 0;
-    FMResultSet *rs = [self.db executeQuery:@"PRAGMA user_version"];
-    if ([rs next])
-        schemaVersion = [rs intForColumnIndex:0];
-    [rs close];
+    html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stUp\"><em>▲</em>" withString:@""];
+    html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stDn\"><em>▼</em>" withString:@"-"];
+    html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stFt\"><em>-</em>" withString:@""];
 
-    BOOL openSuccess = NO;
-    
-    @try
-    {
-        [self.db executeQuery:@"PRAGMA secure_delete = 1"];
-        [self.db executeQuery:@"PRAGMA journal_mode = wal"];
-        [self.db executeQuery:@"PRAGMA synchronous = 1"];
-        [self.db executeQuery:@"PRAGMA fullfsync = 1"];
-        
-        if (schemaVersion < SCHEMA_VERSION)
-        {
-            [self.db beginTransaction];
-            
-            for (NSString *query in [self queryArrayForCreatingSchema])
-            {
-                if ([self.db executeUpdate:query] == NO)
-                {
-                    [[NSException exceptionWithName:@"DB_CREATE"
-                                             reason:self.db.lastError.localizedDescription
-                                           userInfo:@{ @"error": self.db.lastError }] raise];
-                }
-            }
-            
-            [self.db commit];
-            
-            [self.db executeUpdate:[NSString stringWithFormat:@"PRAGMA user_version = %d", SCHEMA_VERSION]];
-        }
-        
-        openSuccess = YES;
-    }
-    @catch (NSException *exception)
-    {
-        openSuccess = NO;
-
-        NSError *error;
-        if (![[NSFileManager defaultManager] removeItemAtPath:self.db.databasePath error:&error])
-            NSLog(@"Couldn't delete database file: %@", error);
-        @throw;
-    }
-    
-    return openSuccess;
-}
-
-- (BOOL)parseStockPriceList:(NSString*)html
-{
     NSRange rangeStarter = {0, html.length};
-    NSRange rangeCloser = {0, 1000};
-    NSRange rangeValue  = {0, 1000};
+    NSRange rangeCloser;
+
+    NSMutableArray *stockPriceList = [[NSMutableArray alloc] init];
+    
+    NSString *itemDate, *itemStart, *itemHigh, *itemLow, *itemEnd, *itemUpDown, *itemAmount;
     
     while ((rangeStarter = [html rangeOfString:@"<td class=\"datetime2\">" options:NSLiteralSearch range:rangeStarter]).location != NSNotFound)
     {
+        itemDate = itemStart = itemHigh = itemLow = itemEnd = itemUpDown = itemAmount = nil;
+        
         rangeCloser.location = rangeStarter.location + rangeStarter.length;
         rangeCloser.length = 20;
-        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
-        
-        rangeValue.location = rangeStarter.location + rangeStarter.length;
-        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
-        NSLog(@"DATE %@ /", [html substringWithRange:rangeValue]);
-
-        
-        rangeStarter.location = rangeCloser.location + rangeCloser.length;
-        rangeStarter.length = 100;
-        rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter];
-
-        rangeCloser.location = rangeStarter.location + rangeStarter.length;
-        rangeCloser.length = 20;
-        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
-
-        rangeValue.location = rangeStarter.location + rangeStarter.length;
-        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
-        NSLog(@"START %@ /", [html substringWithRange:rangeValue]);
-        
+        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
+        itemDate = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
 
         rangeStarter.location = rangeCloser.location + rangeCloser.length;
         rangeStarter.length = 100;
-        rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter];
-        
+        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
+
         rangeCloser.location = rangeStarter.location + rangeStarter.length;
         rangeCloser.length = 20;
-        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
-        
-        rangeValue.location = rangeStarter.location + rangeStarter.length;
-        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
-        NSLog(@"HIGH %@ /", [html substringWithRange:rangeValue]);
-
-        
-        rangeStarter.location = rangeCloser.location + rangeCloser.length;
-        rangeStarter.length = 100;
-        rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter];
-        
-        rangeCloser.location = rangeStarter.location + rangeStarter.length;
-        rangeCloser.length = 20;
-        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
-        
-        rangeValue.location = rangeStarter.location + rangeStarter.length;
-        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
-        NSLog(@"LOW %@ /", [html substringWithRange:rangeValue]);
-
-        
-        rangeStarter.location = rangeCloser.location + rangeCloser.length;
-        rangeStarter.length = 100;
-        rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter];
-        
-        rangeCloser.location = rangeStarter.location + rangeStarter.length;
-        rangeCloser.length = 20;
-        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
-        
-        rangeValue.location = rangeStarter.location + rangeStarter.length;
-        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
-        NSLog(@"END %@ /", [html substringWithRange:rangeValue]);
-
+        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
+        itemStart = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
 
         rangeStarter.location = rangeCloser.location + rangeCloser.length;
         rangeStarter.length = 100;
-        rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter];
+        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
         
         rangeCloser.location = rangeStarter.location + rangeStarter.length;
         rangeCloser.length = 20;
-        rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser];
-        
-        rangeValue.location = rangeStarter.location + rangeStarter.length;
-        rangeValue.length = rangeCloser.location - rangeStarter.location - rangeStarter.length;
-        NSLog(@"AMOUNT %@ /", [html substringWithRange:rangeValue]);
+        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
+        itemHigh = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
 
+        rangeStarter.location = rangeCloser.location + rangeCloser.length;
+        rangeStarter.length = 100;
+        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
+        
+        rangeCloser.location = rangeStarter.location + rangeStarter.length;
+        rangeCloser.length = 20;
+        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
+        itemLow = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
+
+        rangeStarter.location = rangeCloser.location + rangeCloser.length;
+        rangeStarter.length = 100;
+        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
+        
+        rangeCloser.location = rangeStarter.location + rangeStarter.length;
+        rangeCloser.length = 20;
+        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
+        itemEnd = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
+        
+        rangeStarter.location = rangeCloser.location + rangeCloser.length;
+        rangeStarter.length = 100;
+        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
+        
+        rangeCloser.location = rangeStarter.location + rangeStarter.length;
+        rangeCloser.length = 20;
+        if ((rangeCloser = [html rangeOfString:@"</span>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
+        itemUpDown = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
+
+        rangeStarter.location = rangeCloser.location + rangeCloser.length;
+        rangeStarter.length = 200;
+        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
+        
+        rangeCloser.location = rangeStarter.location + rangeStarter.length;
+        rangeCloser.length = 20;
+        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
+        itemAmount = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
         
         rangeStarter.location = rangeCloser.location + rangeCloser.length;
         rangeStarter.length = html.length - rangeStarter.location;
+        
+        if (itemDate == nil || itemStart == nil || itemHigh == nil || itemLow == nil || itemEnd == nil || itemUpDown == nil || itemAmount == nil)
+            continue;
+        
+        if ([[itemDate substringWithRange:NSMakeRange(0, 2)] intValue] > 50)
+            itemDate = [NSString stringWithFormat:@"19%@", itemDate];
+        else
+            itemDate = [NSString stringWithFormat:@"20%@", itemDate];
+        
+        itemStart = [itemStart stringByReplacingOccurrencesOfString:@"," withString:@""];
+        itemHigh = [itemHigh stringByReplacingOccurrencesOfString:@"," withString:@""];
+        itemLow = [itemLow stringByReplacingOccurrencesOfString:@"," withString:@""];
+        itemEnd = [itemEnd stringByReplacingOccurrencesOfString:@"," withString:@""];
+        itemUpDown = [itemUpDown stringByReplacingOccurrencesOfString:@"," withString:@""];
+        itemAmount = [itemAmount stringByReplacingOccurrencesOfString:@"," withString:@""];
+        
+        [stockPriceList addObject:[NSArray arrayWithObjects:itemDate,
+                                   @([itemStart integerValue]),
+                                   @([itemHigh integerValue]),
+                                   @([itemLow integerValue]),
+                                   @([itemEnd integerValue]),
+                                   @([itemUpDown integerValue]),
+                                   @([itemAmount integerValue]), nil]];
     }
 
+//    if (stockPriceList.count == 0)
+//        return 0;
+//
+//    self.stockPrices = [NSMutableArray new];
+//
+//    for (NSArray *arrayPrice in stockPriceList)
+//    {
+//        [self.stockPrices addObject:[NSString stringWithFormat:@"%@ : %@", [arrayPrice objectAtIndex:0], [arrayPrice objectAtIndex:5]]];
+//    }
+//    
+//    [self.tableStockPrice reloadData];
+//    
+//    return stockPriceList.count;
     
-    
-    self.stockPrices = [NSMutableArray new];
-    [self.stockPrices addObject:@"TEST1"];
-    [self.tableStockPrice reloadData];
-    
-    return YES;
+    return stockPriceList;
 }
 
-- (NSArray *)queryArrayForCreatingSchema
-{
-    return @[
-             (@"CREATE TABLE IF NOT EXISTS SHMarket ("
-                "marketType     INTEGER NOT NULL UNIQUE,"
-                "name           TEXT NOT NULL UNIQUE,"
-                "up_max         REAL NOT NULL DEFAULT 0.30,"
-                "down_max       REAL NOT NULL DEFAULT -0.30,"
-                "PRIMARY KEY(marketType)"
-                ");"),
-             
-             (@"CREATE TABLE IF NOT EXISTS SHItemInfo ("
-                "code           TEXT NOT NULL UNIQUE,"
-                "name           TEXT NOT NULL UNIQUE,"
-                "marketType     INTEGER NOT NULL,"
-                "branchType     INTEGER DEFAULT 0,"
-                "tax_buy        REAL NOT NULL DEFAULT 0.0,"
-                "tax_sell       REAL NOT NULL DEFAULT 0.0030,"
-                "fee_buy        REAL NOT NULL DEFAULT 0.000150,"
-                "fee_sell       REAL NOT NULL DEFAULT 0.000150,"
-                "PRIMARY KEY(code,name)"
-                ");"),
-             
-             (@"CREATE INDEX IF NOT EXISTS idx_itemInfo_code ON SHItemInfo (code);"),
-             (@"CREATE INDEX IF NOT EXISTS idx_itemInfo_name ON SHItemInfo (name);"),
-             
-//             (@"CREATE TABLE IF NOT EXISTS SHItem ("
-//                "code           TEXT NOT NULL,"
-//                "date           INTEGER NOT NULL, /* YYYY-MM-DD */"
-//                "start          INTEGER NOT NULL,"
-//                "high           INTEGER NOT NULL,"
-//                "low            INTEGER NOT NULL,"
-//                "end            INTEGER NOT NULL,"
-//                "updown         INTEGER NOT NULL,"
-//                "amount         INTEGER NOT NULL,"
-//                "PRIMARY KEY(code,date)"
-//                ");"),
-//             
-//             (@"CREATE INDEX IF NOT EXISTS idx_item_code ON SHItem (code);"),
-//             (@"CREATE INDEX IF NOT EXISTS idx_item_date ON SHItem (date);"),
-             
-             (@"INSERT INTO SHMarket (marketType, name) VALUES (0, 'KOSPI');"),
-             (@"INSERT INTO SHMarket (marketType, name) VALUES (1, 'KOSDAQ');")
-     ];
-}
-
-- (NSArray *)queryArrayForCreatingItemSchema:(NSString*)itemCode
-{
-    NSString* queryTableName = (@"CREATE TABLE IF NOT EXISTS SHItem_{ITEM_CODE} ("
-                                "date   INTEGER NOT NULL UNIQUE, /* YYYY-MM-DD */"
-                                "start  INTEGER NOT NULL,"
-                                "high   INTEGER NOT NULL,"
-                                "low    INTEGER NOT NULL,"
-                                "end    INTEGER NOT NULL,"
-                                "updown INTEGER NOT NULL,"
-                                "amount INTEGER NOT NULL,"
-                                "PRIMARY KEY(index,date)"
-                                ");");
-
-    NSString* queryIndex = (@"CREATE INDEX IF NOT EXISTS idx_item_{ITEM_CODE}_date ON SHItem_{ITEM_CODE} (date);");
-
-    queryTableName = [queryTableName stringByReplacingOccurrencesOfString:@"{ITEM_CODE}" withString:itemCode];
-    queryIndex = [queryIndex stringByReplacingOccurrencesOfString:@"{ITEM_CODE}" withString:itemCode];
-
-    return @[queryTableName, queryIndex];
-}
 
 #pragma mark - NSTableViewDataSource
 
