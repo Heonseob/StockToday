@@ -15,11 +15,12 @@
 
 + (STDatabaseManager *)sharedInstance;
 
-- (BOOL)transactionBegin;
-- (BOOL)transactionCommit;
-
+//- (BOOL)transactionBegin;
+//- (BOOL)transactionCommit;
 
 - (BOOL)openDatabase;
+- (BOOL)closeDatabase;
+
 - (int)insertItemInfo:(NSArray *)itemArray market:(BOOL)kospi;
 
 @end

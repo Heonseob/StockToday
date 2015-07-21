@@ -48,21 +48,21 @@
     return self;
 }
 
-- (BOOL)transactionBegin
-{
-    if (self.isDatabaseOpen == NO)
-        return NO;
-
-    return [self.db beginTransaction];
-}
-
-- (BOOL)transactionCommit
-{
-    if (self.isDatabaseOpen == NO)
-        return NO;
-
-    return [self.db commit];
-}
+//- (BOOL)transactionBegin
+//{
+//    if (self.isDatabaseOpen == NO)
+//        return NO;
+//
+//    return [self.db beginTransaction];
+//}
+//
+//- (BOOL)transactionCommit
+//{
+//    if (self.isDatabaseOpen == NO)
+//        return NO;
+//
+//    return [self.db commit];
+//}
 
 - (BOOL)openDatabase
 {
@@ -131,7 +131,8 @@
             
             [self.db executeUpdate:[NSString stringWithFormat:@"PRAGMA user_version = %d", SCHEMA_VERSION]];
         }
-        
+
+        NSLog(@"[DATABASE] open Success");
         openSuccess = YES;
     }
     @catch (NSException *exception)
@@ -146,6 +147,21 @@
     
     self.isDatabaseOpen = openSuccess;
     return openSuccess;
+}
+
+- (BOOL)closeDatabase
+{
+    if (self.isDatabaseOpen == NO)
+        return YES;
+
+    BOOL closeSuccess = [self.db close];
+    if (closeSuccess == YES)
+    {
+        self.isDatabaseOpen = NO;
+        NSLog(@"[DATABASE] close Success");
+    }
+
+    return closeSuccess;
 }
 
 - (int)insertItemInfo:(NSArray *)itemArray market:(BOOL)kospi

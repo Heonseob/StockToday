@@ -8,6 +8,7 @@
 
 #import "AppDelegate.h"
 #import "STMainWindowController.h"
+#import "STDatabaseManager.h"
 
 @interface AppDelegate ()
 
@@ -19,6 +20,8 @@
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
+    [DATABASE openDatabase];
+
     self.mainWindowController = [[STMainWindowController alloc] initWithWindowNibName:@"STMainWindowController"];
     [self.mainWindowController showWindow:self];
     //[self.mainWindowController window];
@@ -27,7 +30,7 @@
 
 - (void)applicationWillTerminate:(NSNotification *)aNotification
 {
-
+    [DATABASE closeDatabase];
 }
 
 - (BOOL) applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)application

@@ -47,11 +47,6 @@
 
 - (IBAction)openDatabase:(id)sender
 {
-    BOOL open = [DATABASE openDatabase];
-    if (open == NO)
-        return;
-    
-    NSLog(@"OpenDatabase Success");
 }
 
 - (IBAction)updateKOSPIListPressed:(id)sender
@@ -196,6 +191,8 @@
 
         [self.operationManager.operationQueue addOperation:op];
     }
+    
+    //[self.operationManager.operationQueue cancelAllOperations];
 }
 
 
