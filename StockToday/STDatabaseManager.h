@@ -21,6 +21,10 @@
 - (BOOL)openDatabase;
 - (BOOL)closeDatabase;
 
-- (int)insertItemInfo:(NSArray *)itemArray market:(BOOL)kospi;
+- (BOOL)openItemTable:(NSString *)itemCode;
+- (BOOL)resetItemTable:(NSString *)itemCode;
+
+- (int)insertItemInfo:(NSArray *)itemInfo market:(BOOL)kospi;
+- (int)insertItemPrice:(NSArray *)itemPrice itemCode:(NSString *)itemCode;
 
 @end

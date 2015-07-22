@@ -115,19 +115,19 @@
         
         if (schemaVersion < SCHEMA_VERSION)
         {
-            [self.db beginTransaction];
+            //[self.db beginTransaction];
             
             for (NSString *query in [self queryArrayForCreatingBaseSchema])
             {
                 if ([self.db executeUpdate:query] == NO)
                 {
-                    [[NSException exceptionWithName:@"DB_CREATE"
+                    [[NSException exceptionWithName:@"STDATABASE"
                                              reason:self.db.lastError.localizedDescription
                                            userInfo:@{ @"error": self.db.lastError }] raise];
                 }
             }
             
-            [self.db commit];
+            //[self.db commit];
             
             [self.db executeUpdate:[NSString stringWithFormat:@"PRAGMA user_version = %d", SCHEMA_VERSION]];
         }
@@ -164,7 +164,7 @@
     return closeSuccess;
 }
 
-- (int)insertItemInfo:(NSArray *)itemArray market:(BOOL)kospi
+- (int)insertItemInfo:(NSArray *)itemInfo market:(BOOL)kospi
 {
     if (self.isDatabaseOpen == NO)
         return 0;
@@ -173,7 +173,7 @@
     
     int index = 0;
     NSString *itemCode, *itemName;
-    for (NSDictionary* item in itemArray)
+    for (NSDictionary* item in itemInfo)
     {
         itemCode = itemName = nil;
         itemCode = [item objectForKey:@"code"];
@@ -222,6 +222,64 @@
     return YES;
 }
 
+- (BOOL)resetItemTable:(NSString *)itemCode
+{
+    NSString* queryTable = [NSString stringWithFormat:@"SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'SHItem_%@';", itemCode];
+    
+    int countTable = 0;
+    FMResultSet *rs = [self.db executeQuery:queryTable];
+    if ([rs next])
+        countTable = [rs intForColumnIndex:0];
+    [rs close];
+    
+    if (countTable > 0)
+    {
+        if ([self.db executeUpdate:[NSString stringWithFormat:@"DROP TABLE IF EXISTS 'SHItem_%@';", itemCode]] == NO)
+            return NO;
+    }
+    
+    BOOL openSuccess = [self openItemTable:itemCode];
+    return openSuccess;
+}
+
+- (int)insertItemPrice:(NSArray *)itemPrice itemCode:(NSString *)itemCode
+{
+    if (self.isDatabaseOpen == NO)
+        return -1;
+
+    if (itemPrice == nil || itemCode == nil)
+        return -1;
+    
+    if (itemPrice.count == 0)
+        return 0;
+    
+    int insertCount = 0;
+
+    [self.db beginTransaction];
+
+    for (NSArray *arrayPrice in itemPrice)
+    {
+//        if ([self.db executeUpdate:[NSString stringWithFormat:@"INSERT OR IGNORE INTO SHItem_%@ (date,start,high,low,end,updown,amount) VALUES ('%@',%@,%@,%@,%@,%@,%@);",
+        if ([self.db executeUpdate:[NSString stringWithFormat:@"INSERT INTO SHItem_%@ (date,start,high,low,end,updown,amount) VALUES ('%@',%@,%@,%@,%@,%@,%@);",
+                                    itemCode,
+                                    [arrayPrice objectAtIndex:0],
+                                    [arrayPrice objectAtIndex:1],
+                                    [arrayPrice objectAtIndex:2],
+                                    [arrayPrice objectAtIndex:3],
+                                    [arrayPrice objectAtIndex:4],
+                                    [arrayPrice objectAtIndex:5],
+                                    [arrayPrice objectAtIndex:6]]] == NO)
+            continue;
+
+        insertCount++;
+    }
+
+    [self.db commit];
+    
+    return insertCount;
+}
+
+
 - (NSArray *)queryArrayForCreatingBaseSchema
 {
     return @[
@@ -256,7 +314,7 @@
 - (NSArray *)queryArrayForCreatingItemSchema:(NSString*)itemCode
 {
     NSString* queryTableName = (@"CREATE TABLE IF NOT EXISTS SHItem_{ITEM_CODE} ("
-                                "date   INTEGER NOT NULL UNIQUE, /* YYYY-MM-DD */"
+                                "date   TEXT NOT NULL UNIQUE, /* YYYY-MM-DD */"
                                 "start  INTEGER NOT NULL,"
                                 "high   INTEGER NOT NULL,"
                                 "low    INTEGER NOT NULL,"

@@ -43,6 +43,7 @@
 
     [self.popupStockList addItemWithTitle:@"035420:::네이버"];     //default
     [self.popupStockList selectItemAtIndex:0];
+    
 }
 
 - (IBAction)openDatabase:(id)sender
@@ -71,8 +72,11 @@
 
     NSString* itemCode = [itemComponent objectAtIndex:0];
     
-    [self updateStockItemPrice:itemCode];
+    [DATABASE resetItemTable:itemCode];
+    [self updateStockItemPrice:itemCode page:1];
     
+    //[DATABASE resetItemTable:@"035720"];
+    //[self updateStockItemPrice:@"035720" page:89];
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -162,7 +166,7 @@
                        }];
 }
 
-- (void)updateStockItemPrice:(NSString *)itemCode
+- (void)updateStockItemPrice:(NSString *)itemCode page:(int)pageIndex
 {
     //035420
     //http://finance.naver.com/item/sise_day.nhn?code=%s&page=%d
@@ -171,112 +175,125 @@
 
     //////////////////////////////////////////////////////////////////////////////////////////
     
-    //[self.operationManager.operationQueue setMaxConcurrentOperationCount:3];
-
-    for (int i = 1 ; i < 200 ; i++)
-    {
-        NSString* url = [NSString stringWithFormat:@"http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%@&modify=0", i, itemCode];
-        NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url] cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:5.0];
-        
-        AFHTTPRequestOperation *op = [self.operationManager HTTPRequestOperationWithRequest:request
-                                                                                    success:^(AFHTTPRequestOperation *operation, id responseObject) {
-                                                                                        //NSLog(@"SUCCESS : %@", [operation.request.URL absoluteString]);
-                                                                                        NSString *stockHtml = [[NSString alloc] initWithUTF8String:[(NSData *)responseObject bytes]];
-                                                                                        [self parseStockPriceList:stockHtml];
-
-                                                                                    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-                                                                                        //NSLog(@"FAILED  : %@", [operation.request.URL absoluteString]);
-                                                                                        //NSLog(@"FAILED  : %@", error);
-                                                                                    }];
-
-        [self.operationManager.operationQueue addOperation:op];
-    }
+    NSString* url = [NSString stringWithFormat:@"http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%@&modify=0", pageIndex, itemCode];
     
-    //[self.operationManager.operationQueue cancelAllOperations];
+    [self.operationManager GET:url parameters:nil
+                       success:^(AFHTTPRequestOperation *operation, id responseObject) {
+
+                           if ([(NSData *)responseObject length] == 0)
+                           {
+                               NSLog(@"StockItemPirce SUCCESS - BUT, Data NULL");
+                               return;
+                           }
+                           
+                           NSString* requestURL = [operation.request.URL absoluteString];
+                           NSRange range = NSMakeRange(0, requestURL.length);
+                           NSUInteger resultPosition = 0;
+                           
+                           NSString* pageIndex = [self substringWithInterString:requestURL frontString:@"?page=" frontFindRange:range rearString:@"&code" rearFindLength:10 resultPosition:&resultPosition];
+                           if (pageIndex == nil) return;
+                           
+                           range = NSMakeRange(resultPosition - 5, 10);
+                           NSString* itemCode = [self substringWithInterString:requestURL frontString:@"&code=" frontFindRange:range rearString:@"&modify" rearFindLength:15 resultPosition:&resultPosition];
+                           if (itemCode == nil) return;
+                           
+                           NSString *stockHtml = [[NSString alloc] initWithUTF8String:[(NSData *)responseObject bytes]];
+                           NSMutableArray *itemPrice = [self parseStockPriceList:stockHtml];
+                           
+                           if (itemPrice == nil || itemPrice.count == 0)
+                           {
+                               NSLog(@"StockItemPirce SUCCESS - BUT, Parsing Price is 0");
+                               return;
+                           }
+                           
+                           int insertCount = [DATABASE insertItemPrice:itemPrice itemCode:itemCode];
+                           if (insertCount <= 0)
+                           {
+                               NSLog(@"StockItemPirce SUCCESS - BUT, Insert Price is 0");
+                               return;
+                           }
+
+                           //    if (stockPriceList.count == 0)
+                           //        return 0;
+                           //
+                           //    self.stockPrices = [NSMutableArray new];
+                           //
+                           //    for (NSArray *arrayPrice in stockPriceList)
+                           //    {
+                           //        [self.stockPrices addObject:[NSString stringWithFormat:@"%@ : %@", [arrayPrice objectAtIndex:0], [arrayPrice objectAtIndex:5]]];
+                           //    }
+                           //    
+                           //    [self.tableStockPrice reloadData];
+                           //    
+                           //    return stockPriceList.count;
+
+                           NSLog(@"StockItemPirce SUCCESS - [%@] PAGE %@ (%ld -> %d)", itemCode, pageIndex, itemPrice.count, insertCount);
+                           [self updateStockItemPrice:itemCode page:[pageIndex intValue]+1];
+
+                       } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+
+                           NSString* requestURL = [operation.request.URL absoluteString];
+                           NSRange range = NSMakeRange(0, requestURL.length);
+                           NSUInteger resultPosition = 0;
+                           
+                           NSString* pageIndex = [self substringWithInterString:requestURL frontString:@"?page=" frontFindRange:range rearString:@"&code" rearFindLength:10 resultPosition:&resultPosition];
+                           if (pageIndex == nil) return;
+                           
+                           range = NSMakeRange(resultPosition - 5, 10);
+                           NSString* itemCode = [self substringWithInterString:requestURL frontString:@"&code=" frontFindRange:range rearString:@"&modify" rearFindLength:15 resultPosition:&resultPosition];
+                           if (itemCode == nil) return;
+                           
+                           NSLog(@"StockItemPirce FAIL - [%@] PAGE %@ (RETRY)", itemCode, pageIndex);
+                           [self updateStockItemPrice:itemCode page:[pageIndex intValue]];
+                       }];
 }
 
 
 - (NSMutableArray *)parseStockPriceList:(NSString*)html
 {
+    html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stUp2\"><em>↑</em>" withString:@""];
+    html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stUp2\"><em>&nbsp;</em>" withString:@""];
     html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stUp\"><em>▲</em>" withString:@""];
+    html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stDn2\"><em>&nbsp;</em>" withString:@"-"];
+    html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stDn2\"><em>↓</em>" withString:@"-"];
     html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stDn\"><em>▼</em>" withString:@"-"];
     html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stFt\"><em>-</em>" withString:@""];
-
-    NSRange rangeStarter = {0, html.length};
-    NSRange rangeCloser;
-
-    NSMutableArray *stockPriceList = [[NSMutableArray alloc] init];
     
+    NSRange range = NSMakeRange(0, html.length);
+    NSUInteger resultPosition = 0;
+    
+    NSMutableArray *stockPriceList = [[NSMutableArray alloc] init];
     NSString *itemDate, *itemStart, *itemHigh, *itemLow, *itemEnd, *itemUpDown, *itemAmount;
     
-    while ((rangeStarter = [html rangeOfString:@"<td class=\"datetime2\">" options:NSLiteralSearch range:rangeStarter]).location != NSNotFound)
+    while ((itemDate = [self substringWithInterString:html frontString:@"<td class=\"datetime2\">" frontFindRange:range rearString:@"</td>" rearFindLength:20 resultPosition:&resultPosition]) != nil)
     {
-        itemDate = itemStart = itemHigh = itemLow = itemEnd = itemUpDown = itemAmount = nil;
-        
-        rangeCloser.location = rangeStarter.location + rangeStarter.length;
-        rangeCloser.length = 20;
-        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
-        itemDate = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
+        itemStart = itemHigh = itemLow = itemEnd = itemUpDown = itemAmount = nil;
 
-        rangeStarter.location = rangeCloser.location + rangeCloser.length;
-        rangeStarter.length = 100;
-        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
+        range = NSMakeRange(resultPosition, 100);
+        itemStart = [self substringWithInterString:html frontString:@"<td class=\"num\">" frontFindRange:range rearString:@"</td>" rearFindLength:20 resultPosition:&resultPosition];
+        if (itemStart == nil) return nil;
 
-        rangeCloser.location = rangeStarter.location + rangeStarter.length;
-        rangeCloser.length = 20;
-        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
-        itemStart = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
+        range = NSMakeRange(resultPosition, 100);
+        itemHigh = [self substringWithInterString:html frontString:@"<td class=\"num\">" frontFindRange:range rearString:@"</td>" rearFindLength:20 resultPosition:&resultPosition];
+        if (itemHigh == nil) return nil;
 
-        rangeStarter.location = rangeCloser.location + rangeCloser.length;
-        rangeStarter.length = 100;
-        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
-        
-        rangeCloser.location = rangeStarter.location + rangeStarter.length;
-        rangeCloser.length = 20;
-        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
-        itemHigh = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
+        range = NSMakeRange(resultPosition, 100);
+        itemLow = [self substringWithInterString:html frontString:@"<td class=\"num\">" frontFindRange:range rearString:@"</td>" rearFindLength:20 resultPosition:&resultPosition];
+        if (itemLow == nil) return nil;
 
-        rangeStarter.location = rangeCloser.location + rangeCloser.length;
-        rangeStarter.length = 100;
-        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
-        
-        rangeCloser.location = rangeStarter.location + rangeStarter.length;
-        rangeCloser.length = 20;
-        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
-        itemLow = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
+        range = NSMakeRange(resultPosition, 100);
+        itemEnd = [self substringWithInterString:html frontString:@"<td class=\"num\">" frontFindRange:range rearString:@"</td>" rearFindLength:20 resultPosition:&resultPosition];
+        if (itemEnd == nil) return nil;
 
-        rangeStarter.location = rangeCloser.location + rangeCloser.length;
-        rangeStarter.length = 100;
-        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
-        
-        rangeCloser.location = rangeStarter.location + rangeStarter.length;
-        rangeCloser.length = 20;
-        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
-        itemEnd = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
-        
-        rangeStarter.location = rangeCloser.location + rangeCloser.length;
-        rangeStarter.length = 100;
-        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
-        
-        rangeCloser.location = rangeStarter.location + rangeStarter.length;
-        rangeCloser.length = 20;
-        if ((rangeCloser = [html rangeOfString:@"</span>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
-        itemUpDown = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
+        range = NSMakeRange(resultPosition, 100);
+        itemUpDown = [self substringWithInterString:html frontString:@"<td class=\"num\">" frontFindRange:range rearString:@"</span>" rearFindLength:20 resultPosition:&resultPosition];
+        if (itemUpDown == nil) return nil;
 
-        rangeStarter.location = rangeCloser.location + rangeCloser.length;
-        rangeStarter.length = 200;
-        if ((rangeStarter = [html rangeOfString:@"<td class=\"num\">" options:NSLiteralSearch range:rangeStarter]).location == NSNotFound) continue;
-        
-        rangeCloser.location = rangeStarter.location + rangeStarter.length;
-        rangeCloser.length = 20;
-        if ((rangeCloser = [html rangeOfString:@"</td>" options:NSLiteralSearch range:rangeCloser]).location == NSNotFound) continue;
-        itemAmount = [html substringWithRange:NSMakeRange(rangeStarter.location + rangeStarter.length, rangeCloser.location - (rangeStarter.location+rangeStarter.length))];
-        
-        rangeStarter.location = rangeCloser.location + rangeCloser.length;
-        rangeStarter.length = html.length - rangeStarter.location;
-        
-        if (itemDate == nil || itemStart == nil || itemHigh == nil || itemLow == nil || itemEnd == nil || itemUpDown == nil || itemAmount == nil)
-            continue;
+        range = NSMakeRange(resultPosition, 200);
+        itemAmount = [self substringWithInterString:html frontString:@"<td class=\"num\">" frontFindRange:range rearString:@"</td>" rearFindLength:20 resultPosition:&resultPosition];
+        if (itemAmount == nil) return nil;
+
+        range = NSMakeRange(resultPosition, html.length - resultPosition);
         
         if ([[itemDate substringWithRange:NSMakeRange(0, 2)] intValue] > 50)
             itemDate = [NSString stringWithFormat:@"19%@", itemDate];
@@ -289,6 +306,8 @@
         itemEnd = [itemEnd stringByReplacingOccurrencesOfString:@"," withString:@""];
         itemUpDown = [itemUpDown stringByReplacingOccurrencesOfString:@"," withString:@""];
         itemAmount = [itemAmount stringByReplacingOccurrencesOfString:@"," withString:@""];
+
+        //NSLog(@"%@ - %@ - %@ - %@ - %@ - %@ - %@", itemDate, itemStart, itemHigh, itemLow, itemEnd, itemUpDown, itemAmount);
         
         [stockPriceList addObject:[NSArray arrayWithObjects:itemDate,
                                    @([itemStart integerValue]),
@@ -298,22 +317,32 @@
                                    @([itemUpDown integerValue]),
                                    @([itemAmount integerValue]), nil]];
     }
-
-//    if (stockPriceList.count == 0)
-//        return 0;
-//
-//    self.stockPrices = [NSMutableArray new];
-//
-//    for (NSArray *arrayPrice in stockPriceList)
-//    {
-//        [self.stockPrices addObject:[NSString stringWithFormat:@"%@ : %@", [arrayPrice objectAtIndex:0], [arrayPrice objectAtIndex:5]]];
-//    }
-//    
-//    [self.tableStockPrice reloadData];
-//    
-//    return stockPriceList.count;
     
     return stockPriceList;
+}
+
+- (NSString*)substringWithInterString:(NSString*)targetString
+                          frontString:(NSString*)frontString
+                       frontFindRange:(NSRange)range
+                           rearString:(NSString *)rearString
+                       rearFindLength:(NSUInteger)length
+                       resultPosition:(NSUInteger*)lastPosition
+{
+    range = [targetString rangeOfString:frontString options:NSLiteralSearch range:range];
+    if (range.location == NSNotFound)
+        return nil;
+
+    NSUInteger substringPosition = range.location + range.length;
+    
+    range = NSMakeRange(substringPosition, length);
+    range = [targetString rangeOfString:rearString options:NSLiteralSearch range:range];
+    if (range.location == NSNotFound)
+        return nil;
+    
+    *lastPosition = range.location + range.length;
+    
+    NSString* substring = [targetString substringWithRange:NSMakeRange(substringPosition, range.location - substringPosition)];
+    return substring;
 }
 
 
