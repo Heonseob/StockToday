@@ -3,4 +3,5 @@ target 'StockToday' do
 	pod 'CocoaAsyncSocket'
 	pod 'FMDB'
 	pod 'JSONKit'
+	pod 'KVOController'
 end
