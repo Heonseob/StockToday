@@ -9,6 +9,7 @@
 #import "STMainViewController.h"
 #import "STDatabaseManager.h"
 
+#import <WebKit/WebKit.h>
 #import <GCDAsyncSocket.h>
 #import <AFNetworking.h>
 #import <JSONKit.h>
@@ -21,6 +22,7 @@
 @property (weak) IBOutlet NSButton* updateItemPrice;
 @property (weak) IBOutlet NSPopUpButton* popupStockList;
 @property (weak) IBOutlet NSTableView* tableStockPrice;
+@property (weak) IBOutlet WebView* webView;
 
 @property (strong) AFHTTPRequestOperationManager *operationManager;
 
@@ -44,10 +46,14 @@
     [self.popupStockList addItemWithTitle:@"035420:::네이버"];     //default
     [self.popupStockList selectItemAtIndex:0];
     
+    [self.webView.mainFrame.frameView setAllowsScrolling:NO];
+    [self.webView stringByEvaluatingJavaScriptFromString:@" document.body.style.overflowX='hidden';"];
+
 }
 
 - (IBAction)openDatabase:(id)sender
 {
+    [self.webView.mainFrame reload];
 }
 
 - (IBAction)updateKOSPIListPressed:(id)sender
@@ -60,20 +66,55 @@
     [self updateStockItemList:NO];
 }
 
-- (IBAction)updateItemPricePressed:(id)sender
+- (IBAction)stockItemListSelected:(id)sender
 {
     NSString* selectItem = [self.popupStockList titleOfSelectedItem];
     if (selectItem == nil || [selectItem length] == 0)
         return;
-    
+
     NSArray* itemComponent = [selectItem componentsSeparatedByString:@":::"];
     if (itemComponent == nil || itemComponent.count != 2)
         return;
 
-    NSString* itemCode = [itemComponent objectAtIndex:0];
+    NSString *url = [NSString stringWithFormat:@"http://hyper.moneta.co.kr/fcgi-bin/DelayedCurrPrice10.fcgi?code=%@", [itemComponent objectAtIndex:0]];
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
+    [self.webView.mainFrame loadRequest:request];
+}
+
+
+- (IBAction)updateItemPricePressed:(id)sender
+{
+//    NSString* selectItem = [self.popupStockList titleOfSelectedItem];
+//    if (selectItem == nil || [selectItem length] == 0)
+//        return;
+//    
+//    NSArray* itemComponent = [selectItem componentsSeparatedByString:@":::"];
+//    if (itemComponent == nil || itemComponent.count != 2)
+//        return;
+//
+//    NSString* itemCode = [itemComponent objectAtIndex:0];
+
     
-    [DATABASE resetItemTable:itemCode];
-    [self updateStockItemPrice:itemCode page:1];
+    for (int i = 0 ; i < self.popupStockList.numberOfItems ; i++)
+    {
+        NSString* itemInfo = [self.popupStockList itemTitleAtIndex:i];
+
+        NSArray* itemComponent = [itemInfo componentsSeparatedByString:@":::"];
+        if (itemComponent == nil || itemComponent.count != 2)
+            continue;
+        
+        NSString* itemCode = [itemComponent objectAtIndex:0];
+
+        [[NSOperationQueue mainQueue] addOperationWithBlock: ^{
+            [DATABASE resetItemTable:itemCode];
+            [self updateStockItemPrice:itemCode page:1];
+        }];
+    }
+    
+    
+    [[NSOperationQueue mainQueue].operations count];
+     
+    //[DATABASE deleteLastItemPrice:itemCode];
     
     //[DATABASE resetItemTable:@"035720"];
     //[self updateStockItemPrice:@"035720" page:89];
@@ -81,7 +122,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-- (void) updateStockItemList:(BOOL)kospi
+- (void)updateStockItemList:(BOOL)kospi
 {
     NSString *stockListAPI = nil;
     
@@ -168,10 +209,8 @@
 
 - (void)updateStockItemPrice:(NSString *)itemCode page:(int)pageIndex
 {
-    //035420
-    //http://finance.naver.com/item/sise_day.nhn?code=%s&page=%d
     //http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%s&modify=0   //수정주가 적용안함
-    //http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=1&code=035420&modify=1
+    //http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=1&code=035420&modify=0
 
     //////////////////////////////////////////////////////////////////////////////////////////
     

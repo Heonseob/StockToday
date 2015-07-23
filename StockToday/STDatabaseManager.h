@@ -26,5 +26,6 @@
 
 - (int)insertItemInfo:(NSArray *)itemInfo market:(BOOL)kospi;
 - (int)insertItemPrice:(NSArray *)itemPrice itemCode:(NSString *)itemCode;
+- (BOOL)deleteLastItemPrice:(NSString *)itemCode;
 
 @end

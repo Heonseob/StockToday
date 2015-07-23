@@ -259,7 +259,6 @@
 
     for (NSArray *arrayPrice in itemPrice)
     {
-//        if ([self.db executeUpdate:[NSString stringWithFormat:@"INSERT OR IGNORE INTO SHItem_%@ (date,start,high,low,end,updown,amount) VALUES ('%@',%@,%@,%@,%@,%@,%@);",
         if ([self.db executeUpdate:[NSString stringWithFormat:@"INSERT INTO SHItem_%@ (date,start,high,low,end,updown,amount) VALUES ('%@',%@,%@,%@,%@,%@,%@);",
                                     itemCode,
                                     [arrayPrice objectAtIndex:0],
@@ -279,6 +278,20 @@
     return insertCount;
 }
 
+- (BOOL)deleteLastItemPrice:(NSString *)itemCode
+{
+    if (self.isDatabaseOpen == NO)
+        return NO;
+
+    if (itemCode == nil)
+        return NO;
+    
+    NSString *querySQL = [NSString stringWithFormat:@"DELETE FROM SHItem_%@ WHERE date IN (SELECT date FROM SHItem_%@ ORDER BY date DESC limit 2);", itemCode, itemCode];
+    if ([self.db executeUpdate:querySQL] == NO)
+        return NO;
+    
+    return YES;
+}
 
 - (NSArray *)queryArrayForCreatingBaseSchema
 {
