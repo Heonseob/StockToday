@@ -25,7 +25,6 @@
 @property (weak) IBOutlet NSPopUpButton* popupItemList;
 @property (weak) IBOutlet NSProgressIndicator* indicatorWait;
 
-@property (weak) IBOutlet NSButton* openDatabase;
 @property (weak) IBOutlet NSButton* updateItemPrice;
 @property (weak) IBOutlet NSTableView* tableStockPrice;
 @property (weak) IBOutlet WebView* webView;
@@ -114,56 +113,6 @@
     NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
     [self.webView.mainFrame loadRequest:request];
 }
-
-- (IBAction)openDatabase:(id)sender
-{
-    //NSWindow* aa = [[self view] window];
-    
-    //[self.webView.mainFrame reload];
-}
-
-
-
-- (IBAction)updateItemPricePressed:(id)sender
-{
-//    NSString* selectItem = [self.popupStockList titleOfSelectedItem];
-//    if (selectItem == nil || [selectItem length] == 0)
-//        return;
-//    
-//    NSArray* itemComponent = [selectItem componentsSeparatedByString:@":::"];
-//    if (itemComponent == nil || itemComponent.count != 2)
-//        return;
-//
-//    NSString* itemCode = [itemComponent objectAtIndex:0];
-
-    
-//    for (int i = 0 ; i < self.popupStockList.numberOfItems ; i++)
-//    {
-//        NSString* itemInfo = [self.popupStockList itemTitleAtIndex:i];
-//
-//        NSArray* itemComponent = [itemInfo componentsSeparatedByString:@":::"];
-//        if (itemComponent == nil || itemComponent.count != 2)
-//            continue;
-//        
-//        NSString* itemCode = [itemComponent objectAtIndex:0];
-//
-//        [[NSOperationQueue mainQueue] addOperationWithBlock: ^{
-//            [DATABASE resetItemTable:itemCode];
-//            [self updateStockItemPrice:itemCode page:1];
-//        }];
-//    }
-//    
-//    
-//    [[NSOperationQueue mainQueue].operations count];
-
-    
-    
-    //[DATABASE deleteLastItemPrice:itemCode];
-    //[DATABASE resetItemTable:@"035720"];
-    //[self updateStockItemPrice:@"035720" page:89];
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 - (void)updateStockItemList:(BOOL)kospi
 {
@@ -269,7 +218,7 @@
     [alert addButtonWithTitle:@"앱 종료"];
     
     alert.messageText = message;
-    alert.informativeText = @"Failed \"UpdateStockItemList\" Request";
+    alert.informativeText = @"Failed \"updateStockItemList\" Request";
     
     [alert beginSheetModalForWindow:[[self view] window] completionHandler:^(NSModalResponse returnCode){
         if (returnCode == NSAlertFirstButtonReturn)
@@ -281,10 +230,30 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+- (IBAction)updateItemPricePressed:(id)sender
+{
+    NSString* selectItem = [self.popupItemList titleOfSelectedItem];
+    if (selectItem == nil || [selectItem length] == 0)
+        return;
+    
+    NSArray* itemComponent = [selectItem componentsSeparatedByString:@"] "];
+    if (itemComponent == nil || itemComponent.count != 2)
+        return;
+    
+    NSString* itemCode = [itemComponent objectAtIndex:0];
+    itemCode = [itemCode stringByReplacingOccurrencesOfString:@"[" withString:@""];
+    
+    [[NSOperationQueue mainQueue] addOperationWithBlock: ^{
+        //[DATABASE resetItemTable:itemCode];
+        [DATABASE deleteLastItemPrice:itemCode];
+        [self updateStockItemPrice:itemCode page:1];
+    }];
+}
+
+
 - (void)updateStockItemPrice:(NSString *)itemCode page:(int)pageIndex
 {
     //http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%s&modify=0   //수정주가 적용안함
-    //http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=1&code=035420&modify=0
 
     NSString* url = [NSString stringWithFormat:@"http://stock.daum.net/item/quote_yyyymmdd_sub.daum?page=%d&code=%@&modify=0", pageIndex, itemCode];
     
@@ -299,7 +268,6 @@
                            range = NSMakeRange(resultPosition - 5, 10);
                            NSString* itemCode = [self substringWithInterString:requestURL frontString:@"&code=" frontFindRange:range rearString:@"&modify" rearFindLength:15 resultPosition:&resultPosition];
 
-                           
                            if ([(NSData *)responseObject length] == 0)
                            {
                                NSLog(@"StockItemPirce SUCCESS - BUT, Data NULL");
@@ -358,8 +326,32 @@
 }
 
 
+- (void)alertStockItemPrice:(NSString *)message page:(int)pageIndex retry:(void (^)(int pageIndex))retryBlock
+{
+    NSAlert *alert = [[NSAlert alloc] init];
+    
+    [alert addButtonWithTitle:@"다시 시도"];
+    [alert addButtonWithTitle:@"앱 종료"];
+    
+    alert.messageText = message;
+    alert.informativeText = [NSString stringWithFormat:@"Failed \"updateStockItemPrice(PAGE:%d)\" Request", pageIndex];
+    
+    [alert beginSheetModalForWindow:[[self view] window] completionHandler:^(NSModalResponse returnCode){
+        if (returnCode == NSAlertFirstButtonReturn)
+            retryBlock(pageIndex);
+        else
+            [NSApp terminate:self];
+    }];
+}
+
+
 - (NSMutableArray *)parseStockPriceList:(NSString*)html
 {
+    if (html == nil || html.length == 0)
+        return nil;
+    
+    //if (html. "등락률" 없으면 에러
+    
     html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stUp2\"><em>↑</em>" withString:@""];
     html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stUp2\"><em>&nbsp;</em>" withString:@""];
     html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stUp\"><em>▲</em>" withString:@""];
@@ -417,7 +409,6 @@
         itemAmount = [itemAmount stringByReplacingOccurrencesOfString:@"," withString:@""];
 
         //NSLog(@"%@ - %@ - %@ - %@ - %@ - %@ - %@", itemDate, itemStart, itemHigh, itemLow, itemEnd, itemUpDown, itemAmount);
-        
         [stockPriceList addObject:[NSArray arrayWithObjects:itemDate,
                                    @([itemStart integerValue]),
                                    @([itemHigh integerValue]),
@@ -429,6 +420,8 @@
     
     return stockPriceList;
 }
+
+#pragma mark - Utility Function
 
 - (NSString*)substringWithInterString:(NSString*)targetString
                           frontString:(NSString*)frontString
