@@ -32,6 +32,15 @@
     [super windowDidLoad];
 
     [self.window setFrameAutosaveName:SAVE_WINDOW_NAME];
+    
+    [self.window makeKeyAndOrderFront:nil];
+    [self.window setLevel:NSStatusWindowLevel];
+    
+    // 1초간 TopMost 윈도우 유지
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1.0 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+            [self.window setLevel:NSNormalWindowLevel];
+    });
+
 }
 
 @end

@@ -192,7 +192,7 @@
         if ([self openItemTable:itemCode] == NO)
             continue;
 
-        NSLog(@"[DATABASE] %4d : [%@] %@", index++, itemCode, itemName);
+        //NSLog(@"[DATABASE] %4d : [%@] %@", index++, itemCode, itemName);
     }
     
     [self.db commit];
