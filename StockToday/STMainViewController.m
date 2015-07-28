@@ -12,25 +12,30 @@
 #import <WebKit/WebKit.h>
 #import <GCDAsyncSocket.h>
 #import <AFNetworking.h>
+#import <FBKVOController.h>
 #import <JSONKit.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
 
-#define KEY_LAST_MARKET     @"LAST_MAKET"
-#define KEY_LAST_KOSPI      @"LAST_KOSPI"
-#define KEY_LAST_KOSDAQ     @"LAST_KOSDAQ"
+#define KEY_LAST_MARKET             @"LAST_MAKET"
+#define KEY_LAST_KOSPI              @"LAST_KOSPI"
+#define KEY_LAST_KOSDAQ             @"LAST_KOSDAQ"
+
+#define NOTIFICATION_ITEM_PRICE     @"ItemPriceComplete"
 
 @interface STMainViewController () <NSTableViewDataSource,NSAlertDelegate>
 
 @property (weak) IBOutlet NSPopUpButton* popupItemMarket;
 @property (weak) IBOutlet NSPopUpButton* popupItemList;
 @property (weak) IBOutlet NSProgressIndicator* indicatorWait;
-
-@property (weak) IBOutlet NSButton* updateItemPrice;
 @property (weak) IBOutlet NSTableView* tableStockPrice;
-@property (weak) IBOutlet WebView* webView;
 
 @property (strong) AFHTTPRequestOperationManager *operationManager;
 @property (strong) NSMutableArray *stockPrices;
+
+@property (strong) FBKVOController *fbKVO;
+@property (strong) NSString *selectItemCode;
 
 @end
 
@@ -46,8 +51,36 @@
     self.operationManager = [[AFHTTPRequestOperationManager alloc] init];
     self.operationManager.responseSerializer = [AFHTTPResponseSerializer serializer];
 
-    [self.webView.mainFrame.frameView setAllowsScrolling:NO];
-    [self.webView stringByEvaluatingJavaScriptFromString:@" document.body.style.overflowX='hidden';"];
+//    [self.webView.mainFrame.frameView setAllowsScrolling:NO];
+//    [self.webView stringByEvaluatingJavaScriptFromString:@" document.body.style.overflowX='hidden';"];
+//
+//    NSString *url = [NSString stringWithFormat:@"http://hyper.moneta.co.kr/fcgi-bin/DelayedCurrPrice10.fcgi?code=%@", itemCode];
+//    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
+//    [self.webView.mainFrame loadRequest:request];
+    
+    self.fbKVO = [FBKVOController controllerWithObserver:self];
+
+    [self.fbKVO observe:self keyPath:@"selectItemCode" options:NSKeyValueObservingOptionNew|NSKeyValueObservingOptionOld block:^(id observer, id object, NSDictionary *change){
+
+        if ([[change objectForKey:NSKeyValueChangeNewKey] isEqual:[NSNull null]])
+            return;
+
+        NSString *newItemCode = [change objectForKey:NSKeyValueChangeNewKey];
+        NSString *oldItemCode = nil;
+
+        if ([[change objectForKey:NSKeyValueChangeOldKey] isEqual:[NSNull null]] == NO)
+            oldItemCode = [change objectForKey:NSKeyValueChangeOldKey];
+
+        if ([newItemCode isEqualToString:oldItemCode])
+            return;
+        
+        if ([NSThread currentThread] == [NSThread mainThread])
+            [self.fbKVO.observer performSelector:@selector(updateItemPriceDatabase:) withObject:self.selectItemCode];
+        else
+            [self.fbKVO.observer performSelectorOnMainThread:@selector(updateItemPriceDatabase:) withObject:self.selectItemCode waitUntilDone:NO];
+    }];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(completeItemPriceDatabase:) name:NOTIFICATION_ITEM_PRICE object:nil];
 }
 
 - (void)viewDidAppear
@@ -58,15 +91,11 @@
     if ([selectMarket isEqualToString:@"KOSDAQ"])
     {
         [self.popupItemMarket selectItemAtIndex:1];
-
-        _modeKOSPI = NO;
         [self updateStockItemList:NO];
     }
     else
     {
         [self.popupItemMarket selectItemAtIndex:0];
-
-        _modeKOSPI = YES;
         [self updateStockItemList:YES];
     }
 }
@@ -80,43 +109,16 @@
     [[NSUserDefaults standardUserDefaults] setObject:selectMarket forKey:KEY_LAST_MARKET];
     
     if ([selectMarket isEqualToString:@"KOSDAQ"])
-    {
-        _modeKOSPI = NO;
         [self updateStockItemList:NO];
-    }
     else
-    {
-        _modeKOSPI = YES;
         [self updateStockItemList:YES];
-    }
-}
-
-- (IBAction)popupItemListSelected:(id)sender
-{
-    NSString* selectItem = [self.popupItemList titleOfSelectedItem];
-    if (selectItem == nil || [selectItem length] == 0)
-        return;
-
-    NSArray* itemComponent = [selectItem componentsSeparatedByString:@"] "];
-    if (itemComponent == nil || itemComponent.count != 2)
-        return;
-
-    NSString* itemCode = [itemComponent objectAtIndex:0];
-    itemCode = [itemCode stringByReplacingOccurrencesOfString:@"[" withString:@""];
-
-    if (_modeKOSPI)
-        [[NSUserDefaults standardUserDefaults] setObject:itemCode forKey:KEY_LAST_KOSPI];
-    else
-        [[NSUserDefaults standardUserDefaults] setObject:itemCode forKey:KEY_LAST_KOSDAQ];
-    
-    NSString *url = [NSString stringWithFormat:@"http://hyper.moneta.co.kr/fcgi-bin/DelayedCurrPrice10.fcgi?code=%@", itemCode];
-    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
-    [self.webView.mainFrame loadRequest:request];
 }
 
 - (void)updateStockItemList:(BOOL)kospi
 {
     NSString *stockListAPI = nil;
+
+    _modeKOSPI = kospi;
 
     [self.popupItemList removeAllItems];
 
@@ -190,7 +192,10 @@
                                    continue;
 
                                if ([itemCode isEqualToString:selectItemCode] == YES)
+                               {
+                                   self.selectItemCode = selectItemCode;
                                    selectIndex = count;
+                               }
                                
                                popupName = [NSString stringWithFormat:@"[%@] %@", itemCode, itemName];
                                [self.popupItemList addItemWithTitle:popupName];
@@ -230,7 +235,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-- (IBAction)updateItemPricePressed:(id)sender
+- (IBAction)popupItemListSelected:(id)sender
 {
     NSString* selectItem = [self.popupItemList titleOfSelectedItem];
     if (selectItem == nil || [selectItem length] == 0)
@@ -243,13 +248,23 @@
     NSString* itemCode = [itemComponent objectAtIndex:0];
     itemCode = [itemCode stringByReplacingOccurrencesOfString:@"[" withString:@""];
     
+    if (_modeKOSPI)
+        [[NSUserDefaults standardUserDefaults] setObject:itemCode forKey:KEY_LAST_KOSPI];
+    else
+        [[NSUserDefaults standardUserDefaults] setObject:itemCode forKey:KEY_LAST_KOSDAQ];
+
+    self.selectItemCode = itemCode;
+    
+}
+
+- (void)updateItemPriceDatabase:(NSString *)itemCode
+{
+    
     [[NSOperationQueue mainQueue] addOperationWithBlock: ^{
-        //[DATABASE resetItemTable:itemCode];
         [DATABASE deleteLastItemPrice:itemCode];
         [self updateStockItemPrice:itemCode page:1];
     }];
 }
-
 
 - (void)updateStockItemPrice:(NSString *)itemCode page:(int)pageIndex
 {
@@ -270,41 +285,48 @@
 
                            if ([(NSData *)responseObject length] == 0)
                            {
-                               NSLog(@"StockItemPirce SUCCESS - BUT, Data NULL");
+                               [DATABASE resetItemTable:itemCode];
+                               [self alertStockItemPrice:@"Stock Price Data is NULL" code:itemCode page:[pageIndex intValue] retry:^(NSString *itemCode, int pageIndex) {
+                                   [self updateItemPriceDatabase:itemCode];
+                               }];
                                return;
                            }
 
                            NSString *stockHtml = [[NSString alloc] initWithUTF8String:[(NSData *)responseObject bytes]];
                            NSMutableArray *itemPrice = [self parseStockPriceList:stockHtml];
                            
-                           if (itemPrice == nil || itemPrice.count == 0)
+                           if (itemPrice == nil)
                            {
-                               NSLog(@"StockItemPirce SUCCESS - BUT, Parsing Price is 0");
+                               [DATABASE resetItemTable:itemCode];
+                               [self alertStockItemPrice:@"Stock Price Page Error" code:itemCode page:[pageIndex intValue] retry:^(NSString *itemCode, int pageIndex) {
+                                   [self updateItemPriceDatabase:itemCode];
+                               }];
+                               return;
+                           }
+                               
+                           if (itemPrice.count == 0)
+                           {
+                               NSLog(@"StockItemPirce Complete - [%@] PAGE:%@ (%ld)", itemCode, pageIndex, itemPrice.count);
+                               [[NSNotificationCenter defaultCenter] postNotificationName:NOTIFICATION_ITEM_PRICE object:nil userInfo:nil];
                                return;
                            }
                            
                            int insertCount = [DATABASE insertItemPrice:itemPrice itemCode:itemCode];
-                           if (insertCount <= 0)
+                           if (insertCount <= 0)    //COMPLETE
                            {
-                               NSLog(@"StockItemPirce SUCCESS - BUT, Insert Price is 0");
+                               NSLog(@"StockItemPirce Complete - [%@] PAGE:%@ (%ld -> %d)", itemCode, pageIndex, itemPrice.count, insertCount);
+                               [[NSNotificationCenter defaultCenter] postNotificationName:NOTIFICATION_ITEM_PRICE object:nil userInfo:nil];
                                return;
                            }
 
-                           //    if (stockPriceList.count == 0)
-                           //        return 0;
-                           //
-                           //    self.stockPrices = [NSMutableArray new];
-                           //
-                           //    for (NSArray *arrayPrice in stockPriceList)
-                           //    {
-                           //        [self.stockPrices addObject:[NSString stringWithFormat:@"%@ : %@", [arrayPrice objectAtIndex:0], [arrayPrice objectAtIndex:5]]];
-                           //    }
-                           //    
-                           //    [self.tableStockPrice reloadData];
-                           //    
-                           //    return stockPriceList.count;
-
-                           NSLog(@"StockItemPirce SUCCESS - [%@] PAGE %@ (%ld -> %d)", itemCode, pageIndex, itemPrice.count, insertCount);
+                           if (itemPrice.count > insertCount)   //COMPLETE
+                           {
+                               NSLog(@"StockItemPirce Complete - [%@] PAGE:%@ (%ld -> %d)", itemCode, pageIndex, itemPrice.count, insertCount);
+                               [[NSNotificationCenter defaultCenter] postNotificationName:NOTIFICATION_ITEM_PRICE object:nil userInfo:nil];
+                               return;
+                           }
+                           
+                           NSLog(@"StockItemPirce Complete - [%@] PAGE:%@ (%ld -> %d)", itemCode, pageIndex, itemPrice.count, insertCount);
                            [self updateStockItemPrice:itemCode page:[pageIndex intValue]+1];
 
                        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
@@ -314,43 +336,41 @@
                            NSUInteger resultPosition = 0;
                            
                            NSString* pageIndex = [self substringWithInterString:requestURL frontString:@"?page=" frontFindRange:range rearString:@"&code" rearFindLength:10 resultPosition:&resultPosition];
-                           if (pageIndex == nil) return;
-                           
                            range = NSMakeRange(resultPosition - 5, 10);
                            NSString* itemCode = [self substringWithInterString:requestURL frontString:@"&code=" frontFindRange:range rearString:@"&modify" rearFindLength:15 resultPosition:&resultPosition];
-                           if (itemCode == nil) return;
+
+                           [DATABASE resetItemTable:itemCode];
+                           [self alertStockItemPrice:@"Stock Price Page Failed" code:itemCode page:[pageIndex intValue] retry:^(NSString *itemCode, int pageIndex) {
+                               [self updateItemPriceDatabase:itemCode];
+                           }];
                            
-                           NSLog(@"StockItemPirce FAIL - [%@] PAGE %@ (RETRY)", itemCode, pageIndex);
-                           [self updateStockItemPrice:itemCode page:[pageIndex intValue]];
                        }];
 }
 
 
-- (void)alertStockItemPrice:(NSString *)message page:(int)pageIndex retry:(void (^)(int pageIndex))retryBlock
+- (void)alertStockItemPrice:(NSString *)message code:(NSString *)itemCode page:(int)pageIndex retry:(void (^)(NSString *itemCode, int pageIndex))retryBlock
 {
     NSAlert *alert = [[NSAlert alloc] init];
     
     [alert addButtonWithTitle:@"다시 시도"];
-    [alert addButtonWithTitle:@"앱 종료"];
+    [alert addButtonWithTitle:@"취소"];
     
     alert.messageText = message;
-    alert.informativeText = [NSString stringWithFormat:@"Failed \"updateStockItemPrice(PAGE:%d)\" Request", pageIndex];
+    alert.informativeText = [NSString stringWithFormat:@"Failed \"updateStockItemPrice\"[%@:%d] Request", itemCode, pageIndex];
     
     [alert beginSheetModalForWindow:[[self view] window] completionHandler:^(NSModalResponse returnCode){
         if (returnCode == NSAlertFirstButtonReturn)
-            retryBlock(pageIndex);
-        else
-            [NSApp terminate:self];
+            retryBlock(itemCode, pageIndex);
     }];
 }
-
 
 - (NSMutableArray *)parseStockPriceList:(NSString*)html
 {
     if (html == nil || html.length == 0)
         return nil;
-    
-    //if (html. "등락률" 없으면 에러
+
+    if ([html rangeOfString:@"등락률"].location == NSNotFound)
+        return nil;
     
     html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stUp2\"><em>↑</em>" withString:@""];
     html = [html stringByReplacingOccurrencesOfString:@"<span class=\"stUp2\"><em>&nbsp;</em>" withString:@""];
@@ -421,6 +441,14 @@
     return stockPriceList;
 }
 
+- (void)completeItemPriceDatabase:(NSNotification *)notification
+{
+    NSLog(@"StockItemPirce Database Updated");
+
+
+}
+
+
 #pragma mark - Utility Function
 
 - (NSString*)substringWithInterString:(NSString*)targetString
@@ -431,18 +459,15 @@
                        resultPosition:(NSUInteger*)lastPosition
 {
     range = [targetString rangeOfString:frontString options:NSLiteralSearch range:range];
-    if (range.location == NSNotFound)
-        return nil;
+    if (range.location == NSNotFound) return nil;
 
     NSUInteger substringPosition = range.location + range.length;
     
     range = NSMakeRange(substringPosition, length);
     range = [targetString rangeOfString:rearString options:NSLiteralSearch range:range];
-    if (range.location == NSNotFound)
-        return nil;
+    if (range.location == NSNotFound) return nil;
     
     *lastPosition = range.location + range.length;
-    
     NSString* substring = [targetString substringWithRange:NSMakeRange(substringPosition, range.location - substringPosition)];
     return substring;
 }
@@ -458,6 +483,21 @@
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
 {
+    //    if (stockPriceList.count == 0)
+    //        return 0;
+    //
+    //    self.stockPrices = [NSMutableArray new];
+    //
+    //    for (NSArray *arrayPrice in stockPriceList)
+    //    {
+    //        [self.stockPrices addObject:[NSString stringWithFormat:@"%@ : %@", [arrayPrice objectAtIndex:0], [arrayPrice objectAtIndex:5]]];
+    //    }
+    //
+    //    [self.tableStockPrice reloadData];
+    //
+    //    return stockPriceList.count;
+
+    
     return self.stockPrices.count;
 }
 
