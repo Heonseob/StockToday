@@ -1,0 +1,48 @@
+테이블이름있는지 조회
+SELECT name FROM sqlite_master WHERE name='table'
+SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;		// 테이블 이름 리스트
+SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'YourTableName'
+
+레코드가 있는지 조회
+SELECT EXISTS (SELECT * FROM myFavorites WHERE id=8)
+SELECT EXISTS (SELECT 1 FROM test  WHERE name='John');
+SELECT EXISTS (SELECT 1 FROM myTbl WHERE u_tag='tag' LIMIT 1);
+
+테이블 삭제
+DROP TABLE IF EXISTS 'SHItem';
+
+레코드 삭제
+DELETE FROM SHItem WHERE date IN (SELECT date FROM SHItem ORDER BY date DESC limit 2); - 2개 지우기
+
+
+---------------------------------
+
+추가매수 -3% / 매도목표 3% / 매수횟수 5
+
+매수일 
+2015.07.01
+
+매도일
+2015.07.15
+
+투자일수
+17
+
+매수횟수
+4
+
+평균추가간격
+2.8
+
+2차매수일
+2015.07.01 (2)
+
+3차매수일
+2015.07.08 (4)
+
+4차매수일
+2015.07.011 (2)
+
+
+
+총 매수횟수 2123 / 성공횟수 2001 / 실패횟수 100 / 진행중 22 / 평균 매수횟수 4.3 / 평균 투자일수 20
