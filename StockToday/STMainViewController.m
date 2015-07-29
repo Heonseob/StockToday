@@ -30,6 +30,7 @@
 @property (weak) IBOutlet NSPopUpButton* popupItemMarket;
 @property (weak) IBOutlet NSPopUpButton* popupItemList;
 @property (weak) IBOutlet NSButton* resetItemPrice;
+@property (weak) IBOutlet NSButton* tradeSimulation;
 
 @property (weak) IBOutlet NSProgressIndicator* indicatorListWait;
 @property (weak) IBOutlet NSProgressIndicator* indicatorPriceWait;
@@ -244,6 +245,7 @@
     [self.resetItemPrice setHidden:YES];
     [self.indicatorPriceWait setHidden:NO];
     [self.indicatorPriceWait startAnimation:self];
+    [self.tradeSimulation setEnabled:NO];
 
     [[NSOperationQueue mainQueue] addOperationWithBlock: ^{
         [DATABASE resetItemTable:itemCode];
@@ -258,6 +260,7 @@
     [self.resetItemPrice setHidden:YES];
     [self.indicatorPriceWait setHidden:NO];
     [self.indicatorPriceWait startAnimation:self];
+    [self.tradeSimulation setEnabled:NO];
 
     [[NSOperationQueue mainQueue] addOperationWithBlock: ^{
         [DATABASE deleteLastItemPrice:itemCode];
@@ -272,6 +275,7 @@
     [self.resetItemPrice setHidden:NO];
     [self.indicatorPriceWait stopAnimation:self];
     [self.indicatorPriceWait setHidden:YES];
+    [self.tradeSimulation setEnabled:YES];
     
     NSLog(@"StockItemPirce Database Updated");
 }
@@ -333,6 +337,11 @@
         if (returnCode == NSAlertFirstButtonReturn)
             retryBlock(itemCode, pageIndex);
     }];
+}
+
+- (IBAction)tradeSimulationPress:(id)sender
+{
+    
 }
 
 

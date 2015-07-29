@@ -12,6 +12,7 @@
                 <outlet property="popupItemMarket" destination="WLp-MZ-rh7" id="mct-3y-m7r"/>
                 <outlet property="resetItemPrice" destination="KAZ-Ig-jDe" id="yVo-dK-ZGL"/>
                 <outlet property="tableStockPrice" destination="DpJ-1k-MAc" id="akG-o7-s6S"/>
+                <outlet property="tradeSimulation" destination="cLO-SO-c6c" id="74T-Ys-ipr"/>
                 <outlet property="view" destination="Hz6-mo-xeY" id="0bl-1N-x8E"/>
             </connections>
         </customObject>
@@ -112,20 +113,23 @@
                     </scroller>
                 </scrollView>
                 <progressIndicator hidden="YES" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" maxValue="100" bezeled="NO" indeterminate="YES" controlSize="small" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="nHa-1w-8Kd">
-                    <rect key="frame" x="133" y="284" width="16" height="16"/>
+                    <rect key="frame" x="130" y="284" width="16" height="16"/>
                 </progressIndicator>
                 <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="cLO-SO-c6c">
                     <rect key="frame" x="20" y="244" width="423" height="19"/>
-                    <buttonCell key="cell" type="roundRect" title="Buy Stock Simulation" bezelStyle="roundedRect" alignment="center" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="sw4-Za-vuG">
+                    <buttonCell key="cell" type="roundRect" title="Trade Simulation" bezelStyle="roundedRect" alignment="center" enabled="NO" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="sw4-Za-vuG">
                         <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                         <font key="font" metaFont="cellTitle"/>
                     </buttonCell>
+                    <connections>
+                        <action selector="tradeSimulationPress:" target="-2" id="qw3-Vn-IFZ"/>
+                    </connections>
                 </button>
                 <button horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="KAZ-Ig-jDe">
                     <rect key="frame" x="411" y="271" width="39" height="38"/>
-                    <buttonCell key="cell" type="round" bezelStyle="circular" image="NSRefreshTemplate" imagePosition="overlaps" alignment="center" borderStyle="border" imageScaling="proportionallyDown" id="NAf-uB-EGE">
+                    <buttonCell key="cell" type="round" bezelStyle="circular" image="NSRefreshTemplate" imagePosition="overlaps" alignment="center" borderStyle="border" imageScaling="proportionallyUpOrDown" id="NAf-uB-EGE">
                         <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                        <font key="font" metaFont="label"/>
+                        <font key="font" size="10" name=".HelveticaNeueDeskInterface-Regular"/>
                     </buttonCell>
                     <connections>
                         <action selector="resetItemPricePress:" target="-2" id="02w-fg-bqa"/>
