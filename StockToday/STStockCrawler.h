@@ -14,4 +14,9 @@
                     success:(void (^)(NSArray *itemArray))success
                     failure:(void (^)(NSString *errorMessage))failure;
 
+
+- (void)updateStockItemPrice:(NSString *)itemCode page:(int)pageIndex
+                     success:(void (^)(NSArray *dateArray))success
+                     failure:(void (^)(NSString *errorMessage, NSString *itemCode, int pageIndex))failure;
+
 @end

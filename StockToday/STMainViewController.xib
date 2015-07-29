@@ -6,9 +6,11 @@
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="STMainViewController">
             <connections>
-                <outlet property="indicatorWait" destination="nHa-1w-8Kd" id="yTV-wg-eDP"/>
+                <outlet property="indicatorListWait" destination="nHa-1w-8Kd" id="kJQ-OX-qWA"/>
+                <outlet property="indicatorPriceWait" destination="Cgf-t6-JLt" id="N5y-9I-Mx0"/>
                 <outlet property="popupItemList" destination="RFR-mk-9Kw" id="i7T-w6-yJy"/>
                 <outlet property="popupItemMarket" destination="WLp-MZ-rh7" id="mct-3y-m7r"/>
+                <outlet property="resetItemPrice" destination="KAZ-Ig-jDe" id="yVo-dK-ZGL"/>
                 <outlet property="tableStockPrice" destination="DpJ-1k-MAc" id="akG-o7-s6S"/>
                 <outlet property="view" destination="Hz6-mo-xeY" id="0bl-1N-x8E"/>
             </connections>
@@ -16,7 +18,7 @@
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
         <customView translatesAutoresizingMaskIntoConstraints="NO" id="Hz6-mo-xeY">
-            <rect key="frame" x="0.0" y="5" width="429" height="324"/>
+            <rect key="frame" x="0.0" y="0.0" width="463" height="324"/>
             <subviews>
                 <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="WLp-MZ-rh7">
                     <rect key="frame" x="18" y="280" width="100" height="26"/>
@@ -52,13 +54,13 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <tableView verticalHuggingPriority="750" columnAutoresizingStyle="lastColumnOnly" columnReordering="NO" columnResizing="NO" multipleSelection="NO" autosaveColumns="NO" typeSelect="NO" rowSizeStyle="automatic" viewBased="YES" floatsGroupRows="NO" id="DpJ-1k-MAc">
-                                <rect key="frame" x="0.0" y="0.0" width="299" height="0.0"/>
+                                <rect key="frame" x="0.0" y="0.0" width="372" height="0.0"/>
                                 <autoresizingMask key="autoresizingMask"/>
                                 <size key="intercellSpacing" width="3" height="2"/>
                                 <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                 <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                 <tableColumns>
-                                    <tableColumn editable="NO" width="369" minWidth="40" maxWidth="1000" id="Leh-kE-ede">
+                                    <tableColumn editable="NO" width="384" minWidth="40" maxWidth="1000" id="Leh-kE-ede">
                                         <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Data">
                                             <font key="font" metaFont="smallSystem"/>
                                             <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
@@ -113,14 +115,30 @@
                     <rect key="frame" x="133" y="284" width="16" height="16"/>
                 </progressIndicator>
                 <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="cLO-SO-c6c">
-                    <rect key="frame" x="20" y="191" width="389" height="19"/>
+                    <rect key="frame" x="20" y="244" width="423" height="19"/>
                     <buttonCell key="cell" type="roundRect" title="Buy Stock Simulation" bezelStyle="roundedRect" alignment="center" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="sw4-Za-vuG">
                         <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                         <font key="font" metaFont="cellTitle"/>
                     </buttonCell>
                 </button>
+                <button horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="KAZ-Ig-jDe">
+                    <rect key="frame" x="411" y="271" width="39" height="38"/>
+                    <buttonCell key="cell" type="round" bezelStyle="circular" image="NSRefreshTemplate" imagePosition="overlaps" alignment="center" borderStyle="border" imageScaling="proportionallyDown" id="NAf-uB-EGE">
+                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                        <font key="font" metaFont="label"/>
+                    </buttonCell>
+                    <connections>
+                        <action selector="resetItemPricePress:" target="-2" id="02w-fg-bqa"/>
+                    </connections>
+                </button>
+                <progressIndicator hidden="YES" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" maxValue="100" bezeled="NO" indeterminate="YES" controlSize="small" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="Cgf-t6-JLt">
+                    <rect key="frame" x="422" y="284" width="16" height="16"/>
+                </progressIndicator>
             </subviews>
-            <point key="canvasLocation" x="327.5" y="360"/>
+            <point key="canvasLocation" x="344.5" y="360"/>
         </customView>
     </objects>
+    <resources>
+        <image name="NSRefreshTemplate" width="11" height="15"/>
+    </resources>
 </document>
