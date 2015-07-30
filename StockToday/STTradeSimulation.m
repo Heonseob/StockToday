@@ -7,38 +7,31 @@
 //
 
 #import "STTradeSimulation.h"
+#import "STDatabaseManager.h"
 
+@interface STTradeSimulation()
 
-@implementation STItemPrice
-
-- (id)init
-{
-    if ((self = [super init]))
-    {
-        self.priceDate = nil;
-        self.priceStart = 0;
-        self.priceHigh = 0;
-        self.priceLow = 0;
-        self.priceEnd = 0;
-    }
-    return self;
-}
+@property (strong) STItemInfo* itemInfo;
+@property (strong) NSMutableArray* itemPrices;
 
 @end
 
-//////////////////////////////////////////////////////////////////////////////////////////
-
 @implementation STTradeSimulation
 
-- (id)init
+- (void)setItemCode:(NSString *)itemCode
 {
-    if ((self = [super init]))
-    {
-
-    }
-
-    return self;
+    if (_itemCode != nil && [_itemCode isEqualToString:itemCode])
+        return;
+        
+    self.itemInfo = [[STItemInfo alloc] init];
+    self.itemPrices = [[NSMutableArray alloc] init];
+    
+    BOOL prefareData = [DATABASE selectItemCode:itemCode targetInfo:self.itemInfo targetPrices:self.itemPrices];
+    
+    if (prefareData == NO)
+        return;
+    
+    _itemCode = itemCode;
 }
-
 
 @end

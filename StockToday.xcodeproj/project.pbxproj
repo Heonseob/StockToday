@@ -237,12 +237,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				B281819A1B563F4E00B5EEA7 /* main.m in Sources */,
+				B28181981B563F4E00B5EEA7 /* AppDelegate.m in Sources */,
+				B28181CF1B57835D00B5EEA7 /* STMainWindowController.m in Sources */,
+				B28181C21B564EEF00B5EEA7 /* STMainViewController.m in Sources */,
 				B28181D51B5DE0C600B5EEA7 /* STDatabaseManager.m in Sources */,
 				B2C0B7931B68D1E5002F5F6C /* STStockCrawler.m in Sources */,
-				B28181C21B564EEF00B5EEA7 /* STMainViewController.m in Sources */,
-				B28181981B563F4E00B5EEA7 /* AppDelegate.m in Sources */,
 				B2C0B7901B68CEEE002F5F6C /* STTradeSimulation.m in Sources */,
-				B28181CF1B57835D00B5EEA7 /* STMainWindowController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

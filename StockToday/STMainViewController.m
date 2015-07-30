@@ -7,14 +7,14 @@
 //
 
 #import "STMainViewController.h"
-#import "STDatabaseManager.h"
-
-#import "STStockCrawler.h"
-#import "STTradeSimulation.h"
 
 #import <WebKit/WebKit.h>
 #import <GCDAsyncSocket.h>
 #import <FBKVOController.h>
+
+#import "STDatabaseManager.h"
+#import "STStockCrawler.h"
+#import "STTradeSimulation.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
@@ -25,7 +25,7 @@
 
 #define NOTIFICATION_ITEM_PRICE     @"ItemPriceComplete"
 
-@interface STMainViewController () <NSTableViewDataSource,NSAlertDelegate>
+@interface STMainViewController ()
 
 @property (weak) IBOutlet NSPopUpButton* popupItemMarket;
 @property (weak) IBOutlet NSPopUpButton* popupItemList;
@@ -34,33 +34,24 @@
 
 @property (weak) IBOutlet NSProgressIndicator* indicatorListWait;
 @property (weak) IBOutlet NSProgressIndicator* indicatorPriceWait;
-@property (weak) IBOutlet NSTableView* tableStockPrice;
-
-@property (strong) STStockCrawler* stockCrawler;
-@property (strong) NSMutableArray *stockPrices;
 
 @property (strong) FBKVOController *fbKVO;
 @property (strong) NSString *selectItemCode;
 
+@property (strong) STStockCrawler *stockCrawler;
+@property (strong) STTradeSimulation *stockTrade;
+
 @end
 
+
 @implementation STMainViewController
-{
-    BOOL _modeKOSPI;
-}
 
 - (void)viewDidLoad
 {
     [super viewDidLoad];
 
     self.stockCrawler = [[STStockCrawler alloc] init];
-
-//    [self.webView.mainFrame.frameView setAllowsScrolling:NO];
-//    [self.webView stringByEvaluatingJavaScriptFromString:@" document.body.style.overflowX='hidden';"];
-//
-//    NSString *url = [NSString stringWithFormat:@"http://hyper.moneta.co.kr/fcgi-bin/DelayedCurrPrice10.fcgi?code=%@", itemCode];
-//    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
-//    [self.webView.mainFrame loadRequest:request];
+    self.stockTrade = [[STTradeSimulation alloc] init];
     
     self.fbKVO = [FBKVOController controllerWithObserver:self];
     [self.fbKVO observe:self keyPath:@"selectItemCode" options:NSKeyValueObservingOptionNew|NSKeyValueObservingOptionOld block:^(id observer, id object, NSDictionary *change){
@@ -119,8 +110,6 @@
 
 - (void)updateStockItemList:(BOOL)kospi
 {
-    _modeKOSPI = kospi;
-    
     [self.popupItemMarket setEnabled:NO];
     [self.popupItemList setEnabled:NO];
     [self.resetItemPrice setEnabled:NO];
@@ -218,8 +207,10 @@
     
     NSString* itemCode = [itemComponent objectAtIndex:0];
     itemCode = [itemCode stringByReplacingOccurrencesOfString:@"[" withString:@""];
+
     
-    if (_modeKOSPI)
+    NSString* selectMarket = [self.popupItemMarket titleOfSelectedItem];
+    if ([selectMarket isEqualToString:@"KOSPI"])
         [[NSUserDefaults standardUserDefaults] setObject:itemCode forKey:KEY_LAST_KOSPI];
     else
         [[NSUserDefaults standardUserDefaults] setObject:itemCode forKey:KEY_LAST_KOSDAQ];
@@ -339,43 +330,11 @@
     }];
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 - (IBAction)tradeSimulationPress:(id)sender
 {
-    
+    self.stockTrade.itemCode = self.selectItemCode;
 }
-
-
-
-
-#pragma mark - NSTableViewDataSource
-
-- (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row
-{
-    NSTableCellView *result = [tableView makeViewWithIdentifier:@"COLUMN_DATA" owner:self];
-    result.textField.stringValue = self.stockPrices[row];
-    return result;
-}
-
-- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
-{
-    //    if (stockPriceList.count == 0)
-    //        return 0;
-    //
-    //    self.stockPrices = [NSMutableArray new];
-    //
-    //    for (NSArray *arrayPrice in stockPriceList)
-    //    {
-    //        [self.stockPrices addObject:[NSString stringWithFormat:@"%@ : %@", [arrayPrice objectAtIndex:0], [arrayPrice objectAtIndex:5]]];
-    //    }
-    //
-    //    [self.tableStockPrice reloadData];
-    //
-    //    return stockPriceList.count;
-
-    
-    return self.stockPrices.count;
-}
-
-
 
 @end

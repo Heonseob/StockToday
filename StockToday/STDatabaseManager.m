@@ -7,8 +7,38 @@
 //
 
 #import "STDatabaseManager.h"
+#import <FMDB.h>
 
 #define SCHEMA_VERSION 1
+
+@implementation STItemInfo
+
+- (id)init
+{
+    if ((self = [super init]))
+    {
+    
+    }
+    
+    return self;
+}
+
+@end
+
+@implementation STItemPrice
+
+- (id)init
+{
+    if ((self = [super init]))
+    {
+        
+    }
+    
+    return self;
+}
+
+@end
+
 
 @interface STDatabaseManager ()
 
@@ -343,6 +373,63 @@
     queryIndex = [queryIndex stringByReplacingOccurrencesOfString:@"{ITEM_CODE}" withString:itemCode];
     
     return @[queryTableName, queryIndex];
+}
+
+- (BOOL)selectItemCode:(NSString *)itemCode targetInfo:(STItemInfo *)itemInfo targetPrices:(NSMutableArray *)itemPrices
+{
+    if (self.isDatabaseOpen == NO)
+        return NO;
+    
+    if (itemCode == nil || itemInfo == nil || itemPrices == nil)
+        return NO;
+
+    NSString* queryTable = [NSString stringWithFormat:@"SELECT * FROM SHItemInfo WHERE code = '%@';", itemCode];
+    
+    FMResultSet *rsItem = [self.db executeQuery:queryTable];
+    if (rsItem == nil)
+        return NO;
+    
+    if ([rsItem next])
+    {
+        itemInfo.infoCode = [rsItem stringForColumn:@"code"];
+        itemInfo.infoName = [rsItem stringForColumn:@"name"];
+        itemInfo.taxBuy = (float)[rsItem doubleForColumn:@"tax_buy"];
+        itemInfo.taxSell = (float)[rsItem doubleForColumn:@"tax_sell"];
+        itemInfo.feeBuy = (float)[rsItem doubleForColumn:@"fee_buy"];
+        itemInfo.feeSell = (float)[rsItem doubleForColumn:@"fee_sell"];
+    }
+
+    [rsItem close];
+    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    queryTable = [NSString stringWithFormat:@"SELECT * FROM SHItem_%@ ORDER BY date ASC;", itemCode];
+    
+    FMResultSet *rsDate = [self.db executeQuery:queryTable];
+    if (rsDate == nil)
+        return NO;
+    
+    [itemPrices removeAllObjects];
+    
+    while ([rsDate next])
+    {
+        STItemPrice *itemPrice = [[STItemPrice alloc] init];
+        
+        itemPrice.priceDate = [rsDate stringForColumn:@"date"];
+        itemPrice.priceStart = [rsDate intForColumn:@"start"];
+        itemPrice.priceHigh = [rsDate intForColumn:@"high"];
+        itemPrice.priceLow = [rsDate intForColumn:@"low"];
+        itemPrice.priceEnd = [rsDate intForColumn:@"end"];
+        
+        [itemPrices addObject:itemPrice];
+    }
+    
+    [rsDate close];
+    
+    if (itemPrices.count == 0)
+        return NO;
+    
+    return YES;
 }
 
 
