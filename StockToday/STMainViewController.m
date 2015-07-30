@@ -335,6 +335,9 @@
 - (IBAction)tradeSimulationPress:(id)sender
 {
     self.stockTrade.itemCode = self.selectItemCode;
+    
+    [self.stockTrade runSimulation];
+    //[self.stockTrade runSimulationWithStartPrice];
 }
 
 @end

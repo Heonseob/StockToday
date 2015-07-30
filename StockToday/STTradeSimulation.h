@@ -12,4 +12,10 @@
 
 @property (nonatomic, strong) NSString *itemCode;
 
+- (void)setBuyPolicy:(NSArray *)buyRates howTo:(BOOL)bookBuy;
+- (void)setSellPolicy:(NSArray *)sellRates;
+
+- (BOOL)runSimulation;
+- (BOOL)runSimulationWithStartPrice;
+
 @end
