@@ -40,7 +40,7 @@ DELETE FROM SHItem WHERE date IN (SELECT date FROM SHItem ORDER BY date DESC lim
 매도일자(성공여부***) / (보유기간)
 2015.07.15       / (17)
 
-수익률 / 최대손해율
+현재수익률 / 최대손해율
 3%	/ -5%
 
 
@@ -48,3 +48,11 @@ DELETE FROM SHItem WHERE date IN (SELECT date FROM SHItem ORDER BY date DESC lim
 
 총 매수횟수 2123 / 성공횟수 2001 / 실패횟수 100 / 진행중 22 / 평균 매수횟수 4.3 / 평균 투자일수 20 / 
 1회성공확률 / 2회성공확률 / 3회성공확률 / 4회성공확률 / 5회성공확률
+
+1000,0000원 = (10000원 * 1000주) + (1000주 * 수수료) = 1000주 * (10000원 + 주당 수수료)
+
+
+1000,0000원 / (주당가격 * 주당수수료) = 매입수
+
+
+10000 -> 9000     1.111111
